@@ -5,10 +5,10 @@
 ## Repository Structure
 
 * [APP](src) Boascript implementation.
-* [DISTRIBUTION](distribution) Static library and header.
+* [EXTRAS](extras) External classes.
 * [TEST](test) Test suite
 
-##Getting Startted
+## Getting Started
 ```
 	std::string test = "x = 0; b = 2; s = (b - x) / 500; while (x <= b) { y = a; x +=s; } println x;"
 
@@ -20,4 +20,4 @@
 
 ## Language Reference
 
-![Boascript](file:///reference.html) 
+[Boascript Reference](file:///doc/reference.html) 
