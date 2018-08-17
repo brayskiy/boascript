@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+src/*.tab.*
+
+distribution
+obj
+
