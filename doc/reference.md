@@ -1,41 +1,45 @@
-     1. Basic syntax
+### 1. Basic syntax
         expr     - regular expression what can be presented as string
                     or as num. Each expr has a type - "num" or "string".
         ( expr ) - returns result in braces.
 
-     2. BoaScript is a dynamically typed language. There are no type definitions.
-        There are two types in BoaScript: numerical (<b>num</b>) and <b>string</b>.
+### 2. Data Types
+        BoaScript is a dynamically typed language.
+        There are two types in BoaScript: numerical (num) and string.
         
-     3. Variables.
-        Variables are places that store values. BoaScript has 26 one-character
+### 3. Variables.
+        Variables are places that store values. Boascript has 26 one-character
         names reserved for variables.
 
-     4. Operator of assignment.
+### 4. Operator of assignment.
         a = num;
         s = string;
+        
         Example:
             a = 2;
             b = sin(a) + pow(2, 4);
             print b + 1;
 
-     5. Arithmetic operations.
+### 5. Arithmetic operations.
         num - evaluates regular expression as numerical.
         num + num - returns sum;
         num - num - returns difference;
         num * num - returns production of two expressions;
         num / num - returns result of devision;
         num % num - returns rest of division of two integers;
+        
         Example:
             print 1 + 2 * (4.5 - 8.9) / 3.14 + 5 % 2;
 
-     6. Operations with strings
+### 6. Operations with strings
         string + string - joins two strings;
+        
         Example:
             s = "Hello";
             t = " world";
             print s + t;
 
-     7. Logical operations and bit operations.
+### 7. Logical operations and bit operations.
         The result of logical operation is "1" if thrue or "0" if false.
         Note: for correct and predictable evaluation use integer constants.
         num == num
@@ -46,6 +50,7 @@
         num != num;
         num || num;
         num && num;
+        
         Example:
            a = 2;
            b = 3;
@@ -58,6 +63,7 @@
         num !  num  - bit NOT;
         num << num  - left bit shift;
         num >> num  - right bit shift;
+        
         Example:
             print 1 << 2;
             print !1;
@@ -67,12 +73,13 @@
         string <= string;
         string >= string;
         string != string;
+        
         Example:
             print "A" == "A";
             a = "A" > "B";
 
-     8. Functions.
-        - returning num 
+### 8. Functions.
+#### Returning Number (num) 
         abs(num)                 -
         acos(num)                -
         asin(num)                -
@@ -118,8 +125,10 @@
             a = tonum("1234567");
             print a;
 
-        - returning strings;
+#### Returning string;
+        
         substr(string, num, num) - returns substring defind by indexes;
+        
         Example:
             s = "Hello";
             print substr(s, 0, strlen(s) - 2);
@@ -131,12 +140,14 @@
             t = replace(s, "pp", 2, 2);
 
         tostring(num)            - converts number to string.
+        
         Example:
             s = tostring(1234567);
             print s;
 
         date(string) - returns date or/and current time
         string       - format of output date.
+        
         Example:
             s = date("dd-mm(mmm)-yy(yyyy) hh:MM:SS"); print s;
             s = date("mm/dd/yy hh:MM"); print s;
@@ -174,7 +185,7 @@
             print a; // 1
 
 
-     9. Operators 
+### 9. Operators 
         expr ? expr : expr
         Example:
             s = "A" > "B" ? "Yes" : "No";
@@ -182,6 +193,7 @@
             a = b ? 5 : 10;
 
         ifn(num, num, num)
+        
         Example:
             a = ifn(1 > 2, 6, 7);
 
@@ -191,6 +203,7 @@
             t = ifs("A" >= "B", "True", "False");
 
         Operator "if"
+        
         Example:
             if (num)
             {
@@ -204,20 +217,20 @@
             if (num) { expr }
 
         Operator "while"
+        
         Example:
             while (expr)
             {
                 expr
             }
         
-     10. Comments.
+### 10. Comments.
          Line or part of line will be ignored by the interpreter from double
          slash to the end of line.
+         
          Example:
              // This is comment.
              a = 2; // Assignment.
              print a;
              // End of script.
-                                                                             -->
-
-    <!-- Illustrates basic functionality of the calculator                   -->
+                                                   
