@@ -18,9 +18,14 @@
 
 ```
 
+## Dependencies
+
+To build the Boascript librtary [ooyacc](https://github.com/brayskiy/ooyacc) utility should be installed. 
+
+
 ## Language Reference
 
-[Boascript Reference](https://github.com/brayskiy/boascript/doc/reference.html) 
+[Boascript Reference](doc/reference.md) 
 
 
 ## Applications using Boascript
