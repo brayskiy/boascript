@@ -1,0 +1,328 @@
+ <!DOCTYPE HTML>
+<html>
+<body>
+    <h2>1. Basic notes</h2>
+    
+    <h3>1.1 Values and Types</h3>
+    BoaScript is a dynamically typed language. There are no type definitions.
+    There are two types in BoaScript: numerical (<b>num</b>) and <b>string</b>.
+    
+    <h3>1.2 Expressions</h3>
+    The basic expressions in BoaScript are the following:
+    <p>
+    <pre><code><i>
+        expr ::= num
+        expr ::= string
+    </i></code></pre>
+    </p> 
+    
+    <h3>1.3 Output</h3>
+    BoaScript has two output operators:
+    <p>
+    <pre><code><i>
+        print   expr; - prints the expr
+        println expr; - same as previous but adds CR/LF at the end
+    </i></code></pre>
+    </p> 
+    </p>   
+    <p>
+    Example:
+    <pre><code><i>
+        println 2;
+        print sin(a) + pow(2, 4);
+        println "Hello sweet victory";
+    </i></code></pre>
+    </p>
+    
+    <h3>1.4 Comments</h3>
+    Line or part of line will be ignored by the interpreter from double slash to the end of line.
+    <p>
+    Example:
+    <pre><code><i>
+        // This is comment.
+        a = 2; // Assignment.
+        print a;
+        // End of script.
+    </i></code></pre>
+    </p>
+    
+    <h2>2. Variables.</h2>
+    Variables are places that store values. BoaScript has 26 one-character
+    names reserved for variables - a~z.
+    <p>
+    <pre><code><i>
+       var ::= expr
+    </i></code></pre>
+    </p>   
+    <p>
+    Example:
+    <pre><code><i>
+        a = 2;
+        b = sin(a) + pow(2, 4);
+        s = "Hello sweet victory";
+    </i></code></pre>
+    </p>
+
+    <h2>3. Statements</h2>
+    BoaScript supports a set of statements, similar to those in C. This set includes
+    assignments, control structures, and variable declarations.
+    <p>   
+    
+    <h3>3.1 Chunks</h3>
+    Chunk is a unit of BoaScript execution. A chunk is a sequence of statements, which
+    are executed sequentially. Each statement is followed by a semicolon: 
+    <p>
+    <pre><code><i>
+        chunk ::= { stat; }
+    </i></code></pre>
+           
+    <h3>3.2 Blocks</h3>
+    A block is a list of statements; syntactically, a block is the same as a chunk:
+    <p>
+    <pre><code><i>
+        chunk ::= chunk
+    </i></code></pre>
+        
+    <h3>3.3 Assignment</h3>
+    Assignments in BoaScript are same as in C.
+    <p>
+    <pre><code><i>
+        var ::= num;
+        var ::= string; 
+        var ::= var;
+        var ::= expr;
+    </i></code></pre>        
+        
+    <h3>3.4 Control Structures</h3> 
+    The control structures if, while, and ? have the usual meaning and familiar in C syntax:
+    <p>
+    <pre><code><i>
+        val  ::= expr ? expr : expr
+        stat ::= while (expr) block
+        stat ::= if (expr) block [else block]
+    </i></code></pre>
+    <p>
+    Example:
+    <pre><code><i>
+        s = "A" > "B" ? "Yes" : "No"; // Operator ?
+        b = 1 < 2;
+        a = b ? 5 : 10;
+         
+        // Operator "if"
+        if (a < 2) 
+        {
+            b = sin(c) + cos(d); 
+        }
+        else
+        {
+            b = 12345.34e-1;
+        }
+        
+        // or
+        if (a == 2) { b = 3; }
+        
+        // Operator "while"
+        while (x < 10)
+        {
+            y = x ^ 2;
+            ++x;
+        }
+    </i></code></pre>
+    </p>
+    
+    <h3>3.5 Arithmetic operations</h3>
+    BoaScript supports the usual arithmetic operators: the binary + (addition),
+    - (subtraction), * (multiplication), / (division), % (modulo), and ^ (exponentiation);
+    and unary - (negation). 
+    <p>
+    Example:
+    <pre><code><i>
+        b = 1 + 2 * (4.5 - 8.9) / 3.14 + 5 % 2;
+        a = 2 ^ (1 /6);
+    </i></code></pre>
+    </p>
+
+    <h3>3.6 Relational operators</h3>
+    The relational operators in BoaScript are:
+    <p>
+    <pre><code><i>
+        ==    !=    <     >     <=    >=
+    </i></code></pre>
+    </p>
+    The result of this operations is "1" if true or "0", if false.
+    Example:
+    <p>
+    Example:
+    <pre><code><i>
+        a = 2;
+        b = 3;
+        println a > b;
+        println a < b;
+        c = (a == b) + 1;
+        
+        x = "Hello";
+        y = "Hella";
+        z = (x < y) ? 5 : 10;
+        
+        print "A" == "A";
+        a = "A" > "B";
+    </i></code></pre>
+    </p>
+
+    <h3>3.7 Logical operators</h3>
+    The logical operators in BoaScript are:
+    <p>
+    <pre><code><i>
+        ||    &&
+    </i></code></pre>
+    </p>
+    <p>
+    Example:
+    <pre><code><i>
+        a = 2;
+        b = 3;
+        c = 4;
+        println a || b && c;
+    </i></code></pre>
+    </p>
+        
+    <h3>3.8 Bit operators</h3>
+    The operators in BoaScript are having the same meaning as in C:
+    <p>
+    <pre><code><i>
+        |    &    !     <<     >>
+    </i></code></pre>
+    </p>
+    <p>
+    Example:
+    <pre><code><i>
+        print 1 << 2;
+        print !1;
+    </i></code></pre>
+    </p>
+   
+    <h3>3.9 Concatenation</h3>
+    The string concatenation operator in BoaScript is easy: 
+    <p>
+    Example:
+    <pre><code><i>
+        s = "Hello";
+        t = " world";
+        print s + t;
+    </i></code></pre>
+    </p>
+
+    <h2>4. Functions</h2>
+    BoaScript has a number of embedded functions.
+    
+    <h3>4.1 Functions returning numerical value</h3>
+    <p> 
+    <table border="1" style="font-size:12px">
+        <tr align="left"><th>abs(num)       </th> <th>Absolute value of number</th></tr>
+        <tr align="left"><th>acos(num)      </th> <th>Arc cosine function</th></tr>
+        <tr align="left"><th>asin(num)      </th> <th>Arc sine function</th></tr>
+        <tr align="left"><th>atan(num)      </th> <th>Arc tangent function</th></tr>
+        <tr align="left"><th>atan2(num, num)</th> <th>Arc tangent function of two variables</th></tr>
+        <tr align="left"><th>ceil(num)      </th> <th>Smallest integral value not less than argument</th></tr>
+        <tr align="left"><th>cos(num)       </th> <th>Cosine function</th></tr>
+        <tr align="left"><th>cosh(num)      </th> <th>Cosine hyperbolic function</th></tr>
+        <tr align="left"><th>exp(num)       </th> <th>Exponent function</th></tr>
+        <tr align="left"><th>fabs(num)      </th> <th>Absolute value of number</th></tr>
+        <tr align="left"><th>floor(num)     </th> <th>Largest integral value not greater than argument</th></tr>
+        <tr align="left"><th>fmod(num, num) </th> <th>Floating-point remainder function</th></tr>
+        <tr align="left"><th>frexp(num, num)</th> <th>Convert number to fractional and integral components</th></tr>
+        <tr align="left"><th>log(num)       </th> <th>Natural logarithm function</th></tr>
+        <tr align="left"><th>log10(num)     </th> <th>Logarithm of base 10 function</th></tr>
+        <tr align="left"><th>max(num, num)  </th> <th>Maximal value among two expressions</th></tr>
+        <tr align="left"><th>min(num, num)  </th> <th>Minimal value among two expressions</th></tr>
+        <tr align="left"><th>modf(num, num) </th> <th>Extract signed integral and fractional values</th></tr>
+        <tr align="left"><th>pi()           </th> <th>Returns pi-number</th></tr>       
+        <tr align="left"><th>pow(num, num)  </th> <th>Power function</th></tr>
+        <tr align="left"><th>rand()         </th> <th>Random number generator in the range [0,1]</th></tr>
+        <tr align="left"><th>sin(num)       </th> <th>Sine function</th></tr>
+        <tr align="left"><th>sinh(num)      </th> <th>Sine hyperbolic function</th></tr>
+        <tr align="left"><th>sqrt(num)      </th> <th>Square root function</th></tr>
+        <tr align="left"><th>strlen(string) </th> <th>Returns length of string</th></tr>
+        <tr align="left"><th>tan(num)       </th> <th>Tangent function</th></tr>
+        <tr align="left"><th>tanh(num)      </th> <th>Tangent hyperbolic function</th></tr>
+        <tr align="left"><th>tonum(string)  </th> <th>converts string to number</th></tr>
+    </table>
+    </p>
+    <p>       
+    Example:
+    <pre><code><i>
+        print sqrt(2);
+        a = sin(sqrt(cos(0) + 1)) + 
+            atan(sin(pi() / 2));
+        b = rand();
+            
+        a = strlen("Hello world");
+        print strlen("AAAAAAAA");
+            
+        a = tonum("1234567");
+        print a;
+    </i></pre></code>
+    </p>
+    
+    <h3>4.2 Functions returning string</h3>
+    <p>
+    <table border="1" style="font-size:12px">               
+        <tr align="left"><th>substr(string, num, num)          </th> <th>Substring defined by indexes</th></tr>
+        <tr align="left"><th>replace(string, string, num, num) </th> <th>Replase part of string by another</th></tr>
+        <tr align="left"><th>tostring(num)                     </th> <th>Convert number to string</th></tr>
+        <tr align="left"><th>date(string)                      </th> <th>Return date or/and current time</th></tr>
+        <tr align="left"><th>substitute(string, string, string)</th> <th>Substitute target string instead the pattern</th></tr>
+    </table>
+    </p>
+    <p>
+    Example:
+    <pre><code><i>
+        s = "Hello";
+        print substr(s, 0, strlen(s) - 2);
+       
+        s = "Hello";
+        t = replace(s, "pp", 2, 2);
+           
+        s = tostring(1234567);
+        print s;
+            
+        s = date("dd-mm(mmm)-yy(yyyy) hh:MM:SS");
+        print s;
+        s = date("mm/dd/yy hh:MM");
+        print s;
+        //where
+        //   d - day of month [0...31];
+        //   m - month [1...12] (mm format) or abbrev. of month (mmm format);
+        //   y - year (two digits or four digits);
+        //   h - hour of day [1...12];
+        //   H - hour of day [0...23];
+        //   M - minute [0...59];
+        //   S - second [0...59];
+           
+        a = "Hello"; 
+        s = substr(a, 0, 3);
+        t = "BoaScript";
+        u = s + " " + t;
+    </i></code></pre>
+    </p>
+    
+    <h3>4.3 Special Functions</h3>
+    <p>
+    Example:
+    <pre><code><i>
+        val = ifn(expr1, expr2, expr3);
+        val = ifs(expr1, expr2, expr3);
+        
+        Returns expr2 if expr1 is true or expr3 otherwise.
+    </i></code></pre>
+    </p>
+    <p>
+    Example:
+    <pre><code><i>
+        s = ifs(1 < 2, "Yes", "No"); // ifs(num, string, string)
+        t = ifs("A" >= "B", "True", "False");
+    </i></code></pre>
+    </p>
+    
+</body>
+</html> 
