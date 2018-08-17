@@ -4,7 +4,7 @@
 
 ## Repository Structure
 
-* [SRC](src) Boascript implementation.
+* [APP](src) Boascript implementation.
 * [EXTRAS](extras) External classes.
 * [TEST](test) Test suite
 
@@ -20,4 +20,4 @@
 
 ## Language Reference
 
-[Boascript Reference](file:///doc/reference.html) 
+[Boascript Reference](https://github.com/brayskiy/boascript/doc/reference.html) 
