@@ -4,7 +4,7 @@
 
 ## Repository Structure
 
-* [APP](src) Boascript implementation.
+* [SRC](src) Boascript implementation.
 * [EXTRAS](extras) External classes.
 * [TEST](test) Test suite
 
