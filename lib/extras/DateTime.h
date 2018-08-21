@@ -167,7 +167,7 @@ public:
 
         if (inBuf)
         {
-            delete inBuf;
+            delete [] inBuf;
             inBuf = 0;
         }
 

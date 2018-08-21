@@ -51,7 +51,11 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdarg.h>
+#if defined(BOS_OSX)
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #include <math.h>
 #include <iostream>
 #include <iomanip>

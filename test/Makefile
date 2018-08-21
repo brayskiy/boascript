@@ -10,7 +10,7 @@ CCFLAGS	      = -O3 -DNDEBUG -DCALC_BATCH
 
 SRC_DIR       = .
 DIST_DIR      = ../distribution
-EXT_DIR       = ../extras
+EXT_DIR       = ../lib/extras
 
 LDFLAGS	      =
 

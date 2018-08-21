@@ -25,11 +25,13 @@ To build the Boascript librtary [ooyacc](https://github.com/brayskiy/ooyacc) uti
 
 ## Language Reference
 
-[Boascript Reference](doc/reference.md) 
+[Boascript Reference](doc/reference.md)
 
 
 ## Applications using Boascript
 
-[Boascript](https://play.google.com/store/apps/details?id=boris.boascript)
+[Boascript](https://play.google.com/store/apps/details?id=boris.boascript) for Android
+
+
 
 [Calclab](https://play.google.com/store/apps/details?id=boris.calclab.free) is a graphing calculator (also graphics / graphic calculator) refers to a class of scientific calculators that are capable of plotting graphs (Cartesian two and three dimensional, Polar and Parametric) and performing calculations using BoaScript scripting language. BoaScript has a C-style syntax and allows to conduct the calculations in the wide range - from arithmetic and trigonometric calculations to complex numerical solutions.

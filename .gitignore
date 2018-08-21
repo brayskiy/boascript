@@ -31,8 +31,11 @@
 *.out
 *.app
 
+.idea/*
+
 src/*.tab.*
 
 distribution
-obj
+
+*build*
 
