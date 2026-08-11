@@ -11,6 +11,7 @@ string and get the output back.
 * [APP](src) — BoaScript implementation (the `ooyacc` grammar `Boascript.y`).
 * [EXTRAS](extras) — supporting classes (types, tokenizer, date/time).
 * [TEST](test) — test suites, golden-file cases, and coverage tooling.
+* [CLI](cli) — `boa`, an interactive REPL for the language.
 * [DEMO](demo) — an interactive CLI demo of the language features.
 * [DOC](doc) — the [language reference](doc/reference.md).
 
@@ -69,11 +70,31 @@ Building the BoaScript library requires the
 make all          # generate the parser, build distribution/libBoascript.a
 ```
 
+## Interactive interpreter (REPL)
+
+`boa` is a Python-style REPL over a persistent session — variables, functions,
+and arrays defined on one line stay in effect on the next. A bare expression is
+echoed; statements run silently.
+
+```sh
+make cli          # builds the library and the REPL
+./cli/boa
+```
+
+```
+>>> a = 0
+>>> a + 2
+2
+>>> exit()
+```
+
+See [cli/README.md](cli/README.md) for details.
+
 ## Demo
 
 An interactive CLI demo presents a menu of feature demos; pick one by typing
 its number (or clicking it in a mouse-capable terminal) to see the BoaScript
-source and its output. There is also a small REPL.
+source and its output.
 
 ```sh
 make demo         # builds the library and the demo
