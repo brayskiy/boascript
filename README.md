@@ -11,6 +11,7 @@ string and get the output back.
 * [APP](src) — BoaScript implementation (the `ooyacc` grammar `Boascript.y`).
 * [EXTRAS](extras) — supporting classes (types, tokenizer, date/time).
 * [TEST](test) — test suites, golden-file cases, and coverage tooling.
+* [DEMO](demo) — an interactive CLI demo of the language features.
 * [DOC](doc) — the [language reference](doc/reference.md).
 
 ## Getting Started
@@ -67,6 +68,19 @@ Building the BoaScript library requires the
 ```sh
 make all          # generate the parser, build distribution/libBoascript.a
 ```
+
+## Demo
+
+An interactive CLI demo presents a menu of feature demos; pick one by typing
+its number (or clicking it in a mouse-capable terminal) to see the BoaScript
+source and its output. There is also a small REPL.
+
+```sh
+make demo         # builds the library and the demo
+./demo/boademo
+```
+
+See [demo/README.md](demo/README.md) for details.
 
 ## Testing
 
