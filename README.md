@@ -51,6 +51,8 @@ std::cout << res << std::endl;   // 2.0000000
 * **Arrays**: `[..]` literals, `a[i]` get/set, and `len`/`sum`/`avg`/`max`/
   `min`/`prod` reductions — including **multi-dimensional** (nested) arrays
   with `m[i][j][k]` index chains.
+* **Introspection**: `version()` returns the release version (`YY.WW.BB`),
+  and `about()` / `description()` return the application description.
 
 See the [language reference](doc/reference.md) for full details and examples.
 
@@ -81,6 +83,15 @@ Three complementary suites live under [test/](test):
 
 `make coverage` (in `test/`) reports line and branch coverage via `gcov`.
 See [test/README.md](test/README.md) for details.
+
+## Releases and versioning
+
+The release version has the form `YY.WW.BB` (two-digit year, ISO week,
+patch). It is promoted automatically each time `develop` is merged into
+`master`: the [release workflow](.github/workflows/release.yml) computes the
+next patch for the current year+week (restarting at `01` when the week
+rolls over) and creates a `vYY.WW.BB` git tag and GitHub Release. The build
+bakes the latest tag into the library, where `version()` exposes it.
 
 ## Applications using BoaScript
 

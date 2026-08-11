@@ -69,6 +69,26 @@ static void runOnly(const char* what, const std::string& src)
     catch (...) { ++g_fail; std::cout << "FAIL [" << what << "]: threw\n"; }
 }
 
+// Assert a predicate on the program's output string.
+static void check(const char* what, const std::string& src, bool ok)
+{
+    if (ok) { ++g_pass; return; }
+    ++g_fail;
+    std::cout << "FAIL [" << what << "]: unexpected output [" << run(src) << "]\n";
+}
+
+// The version string must look like YY.WW.BB: three dot-separated numbers.
+static bool looksLikeVersion(const std::string& s)
+{
+    int parts = 1;
+    for (size_t i = 0; i < s.size(); ++i)
+    {
+        if (s[i] == '.') { ++parts; continue; }
+        if (s[i] < '0' || s[i] > '9') return false;
+    }
+    return parts == 3 && s.size() >= 5;   // e.g. "0.0.0"
+}
+
 
 static void testArithmetic()
 {
@@ -390,6 +410,22 @@ static void testArrays()
 }
 
 
+static void testVersion()
+{
+    // version() returns a YY.WW.BB string; about()/description() the app text.
+    check("version_fmt", "print version();", looksLikeVersion(run("print version();")));
+    check("about_nonempty", "print about();", run("print about();").size() > 0);
+    check("about_boascript", "print about();",
+          run("print about();").find("BoaScript") != std::string::npos);
+    check("description_alias", "print description();",
+          run("print description();") == run("print about();"));
+    // Usable in expressions; version/about are not reserved words.
+    check("version_concat", "print \"v\" + version();",
+          run("print \"v\" + version();").substr(0, 1) == "v");
+    eqNum("version_as_var", "version = 5; println version + 1;", 6);
+}
+
+
 static void testLexer()
 {
     eqNum("sci_pos",   "println 1.5e3;", 1500);
@@ -476,6 +512,7 @@ int main()
     testHypotUpperLower();
     testStringManip();
     testArrays();
+    testVersion();
     testLexer();
     testApi();
 
