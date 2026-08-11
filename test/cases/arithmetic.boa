@@ -1,0 +1,9 @@
+// Arithmetic operators and precedence.
+println 2 + 3 * 4;      // 14  (mul before add)
+println (2 + 3) * 4;    // 20  (parentheses)
+println 10 - 2 - 3;     // 5   (left associative)
+println 2 ^ 10;         // 1024 (exponent)
+println 17 % 5;         // 2   (modulo)
+println -5 + 8;         // 3   (unary minus)
+println 7 / 2;          // 3.5 (real division)
+println 3 * -4;         // -12

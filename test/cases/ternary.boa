@@ -1,0 +1,10 @@
+// Ternary operator and the ifn() compatibility builtin.
+println 1 ? 10 : 20;        // 10
+println 0 ? 10 : 20;        // 20
+println ifn(1, 100, 200);   // 100
+println ifn(0, 100, 200);   // 200
+
+// Ternary selecting between computed expressions.
+a = 8;
+b = 5;
+println a > b ? a : b;      // 8

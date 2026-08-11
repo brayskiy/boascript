@@ -1,0 +1,7 @@
+// Output precision control.
+println pi();          // default precision is 7 decimals: 3.1415927
+setprec(2);
+println pi();          // 3.14
+println getprec();     // 2.00
+setprec(10);
+println sqrt(2);       // 1.4142135624

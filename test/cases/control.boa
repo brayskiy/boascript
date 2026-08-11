@@ -1,0 +1,16 @@
+// Control flow: if / else and while.
+x = 10;
+if (x > 5) println "big"; else println "small";    // big
+
+y = 3;
+if (y > 5) println "big"; else println "small";    // small
+
+// Nested if without else (dangling-else binds to nearest if).
+z = 7;
+if (z > 0) if (z > 100) println "huge"; else println "positive";  // positive
+
+// while loop accumulating a sum.
+n = 1;
+sum = 0;
+while (n <= 4) { sum += n; ++n; }
+println sum;    // 10

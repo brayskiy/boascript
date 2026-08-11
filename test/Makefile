@@ -1,4 +1,5 @@
-TASK = testboascript
+TASK          = testboascript
+DRIVER        = driver
 
 CC            = g++
 LINKER	      = g++
@@ -21,22 +22,36 @@ LIBDIR        = -L${DIST_DIR}
 INCLUDES      = -I${DIST_DIR} \
                 -I${EXT_DIR}
 
-OBJS          =  $(TASK).o    \
 
-SRCS	      = $(TASK).cpp  \
+all: ${TASK} ${DRIVER}
 
-
-all: ${TASK}
-
-${TASK}: $(OBJS)
+${TASK}: $(TASK).o
 	@echo -n "Linking $(TASK) ... "
-	$(LINKER) $(LDFLAGS) -o $(TASK) $(OBJS) ${LIBDIR} ${LIBS}
+	$(LINKER) $(LDFLAGS) -o $(TASK) $(TASK).o ${LIBDIR} ${LIBS}
 	@echo "... well done"
 
-${TASK}.o: ${TASK}.cpp
+${DRIVER}: $(DRIVER).o
+	@echo -n "Linking $(DRIVER) ... "
+	$(LINKER) $(LDFLAGS) -o $(DRIVER) $(DRIVER).o ${LIBDIR} ${LIBS}
+	@echo "... well done"
+
+%.o: %.cpp
 	$(CC) $(CCFLAGS) $(INCLUDES) -c $< -o $@
+
+# Run both test suites: the embedded assertion table in testboascript
+# and the golden-file cases driven by run_tests.sh.
+check: all
+	@echo "== embedded assertion suite =="
+	@./$(TASK) > /dev/null && echo "  testboascript: PASS" \
+	    || { echo "  testboascript: FAIL"; exit 1; }
+	@echo "== golden-file suite =="
+	@bash run_tests.sh
+
+test: check
 
 clean:
 	@echo "Cleaning..."
-	$(RM) *.o $(TASK)
+	$(RM) *.o $(TASK) $(DRIVER) build
 	@echo "... done"
+
+.PHONY: all check test clean

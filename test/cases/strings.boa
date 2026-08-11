@@ -1,0 +1,9 @@
+// String values and string functions.
+s = "Hello" + " " + "World";
+println s;                                // Hello World
+println strlen(s);                        // 11
+println substr(s, 0, 5);                  // Hello
+println replace("Hello world", "pp", 2, 2);   // Heppo world
+println substitute("aXaXa", "X", "-");    // a-a-a
+println tostr(42);                        // 42
+println tonum("41") + 1;                  // 42
