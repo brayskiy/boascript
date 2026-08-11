@@ -445,6 +445,29 @@ TestCase testCase[] =
         assertEqualDouble
     },
 
+    // String manipulation.
+
+    {
+        4028,
+        "print reverse(\"abc\") + repeat(\"-\", 2) + charat(\"XYZ\", 2);",
+        "cba--Z",
+        assertEqualString
+    },
+
+    {
+        4030,
+        "println find(\"hello world\", \"world\");",
+        "6",
+        assertEqualDouble
+    },
+
+    {
+        4032,
+        "print \"n=\" + 7;",   // number stringified in concatenation
+        "n=7",
+        assertEqualString
+    },
+
 };
 
 

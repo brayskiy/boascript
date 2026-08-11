@@ -135,7 +135,9 @@ static void testCompareString()
     eqNum("mismatch_le2", "println 1 <= \"a\";", 0);
     eqNum("mismatch_eq2", "println 1 == \"a\";", 0);
     eqNum("mismatch_ne2", "println 1 != \"a\";", 0);
-    eqNum("mismatch_add", "println \"a\" + 1;", 0);
+    // '+' with mixed string/number operands concatenates (number stringified).
+    eqStr("concat_str_num", "print \"a\" + 1;", "a1");
+    eqStr("concat_num_str", "print 1 + \"a\";", "1a");
 }
 
 
@@ -314,6 +316,27 @@ static void testHypotUpperLower()
 }
 
 
+static void testStringManip()
+{
+    eqNum("len_str",   "println len(\"hello\");", 5);
+    eqNum("len_empty", "println len(\"\");", 0);
+    eqStr("reverse",   "print reverse(\"abcdef\");", "fedcba");
+    eqStr("reverse_pal","print reverse(\"racecar\");", "racecar");
+    eqNum("find_hit",  "println find(\"Hello, World\", \"World\");", 7);
+    eqNum("find_miss", "println find(\"Hello\", \"xyz\");", -1);
+    eqNum("find_start","println find(\"abc\", \"a\");", 0);
+    eqStr("repeat",    "print repeat(\"ab\", 3);", "ababab");
+    eqStr("repeat0",   "print repeat(\"ab\", 0);", "");
+    eqStr("charat",    "print charat(\"Hello\", 1);", "e");
+    eqStr("charat_oob","print charat(\"Hi\", 9);", "");
+    // Composition and mixed concatenation.
+    eqStr("upper_substr", "print upper(substr(\"Hello, World\", 7, 5));", "WORLD");
+    eqNum("len_reverse",  "println len(reverse(\"hello\"));", 5);
+    eqStr("concat_label", "print \"count=\" + 42;", "count=42");
+    eqStr("concat_two",   "print \"foo\" + \"bar\";", "foobar");
+}
+
+
 static void testArrays()
 {
     eqNum("arr_len",  "a = [1, 2, 3, 4, 5]; println len(a);", 5);
@@ -428,6 +451,7 @@ int main()
     testIntgauss3();
     testNumberBases();
     testHypotUpperLower();
+    testStringManip();
     testArrays();
     testLexer();
     testApi();

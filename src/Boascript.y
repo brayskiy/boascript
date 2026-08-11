@@ -59,6 +59,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <algorithm>
 
 
 #define CALC_BATCH
@@ -201,6 +202,7 @@ struct BoaReturn
 %token ABS ACOS ASIN ATAN ATAN2 CEIL COS COSH EXP FABS FLOOR FMOD
 %token FREXP LDEXP LOG LOG10 MODF POW SIN SINH SQRT CBRT TAN TANH
 %token MIN MAX RAND DATE MATCH PI HYPOT UPPER LOWER
+%token REVERSE FIND REPEAT CHARAT
 %token SETPREC GETPREC
 %token COMMENT EXIT
 %nonassoc IFX
@@ -398,6 +400,10 @@ expr:
                | HYPOT '(' expr ',' expr ')' { $$ = opr(HYPOT, 2, $3, $5);   }
                | UPPER '(' expr ')'     { $$ = opr(UPPER, 1, $3);            }
                | LOWER '(' expr ')'     { $$ = opr(LOWER, 1, $3);            }
+               | REVERSE '(' expr ')'   { $$ = opr(REVERSE, 1, $3);          }
+               | FIND   '(' expr ',' expr ')' { $$ = opr(FIND, 2, $3, $5);   }
+               | REPEAT '(' expr ',' expr ')' { $$ = opr(REPEAT, 2, $3, $5); }
+               | CHARAT '(' expr ',' expr ')' { $$ = opr(CHARAT, 2, $3, $5); }
                | FREXP '(' expr ',' expr ')' { $$ = opr(FREXP,2, $3, $5);    }
                | LDEXP '(' expr ',' expr ')' { $$ = opr(LDEXP,2, $3, $5);    }
                | LOG   '(' expr ')'     { $$ = opr(LOG , 1, $3);             }
@@ -1176,6 +1182,22 @@ int yylex(void)
             {
                 return LOWER;
             }
+            else if (strcmp(buf, "reverse") == 0)
+            {
+                return REVERSE;
+            }
+            else if (strcmp(buf, "find") == 0)
+            {
+                return FIND;
+            }
+            else if (strcmp(buf, "repeat") == 0)
+            {
+                return REPEAT;
+            }
+            else if (strcmp(buf, "charat") == 0)
+            {
+                return CHARAT;
+            }
             else if (strcmp(buf, "sin") == 0)
             {
                 return SIN;
@@ -1487,6 +1509,32 @@ double callF1(const std::string& name, double x)
 }
 
 
+// Wrap a std::string as a string-typed DataType (truncated to MAX_STR_LEN).
+DataType makeStr(const std::string& s)
+{
+    DataType d;
+    int len = (s.size() > MAX_STR_LEN) ? MAX_STR_LEN : (int)s.size();
+    d.type = DataType::typeStr;
+    memset(d.str, 0, MAX_STR_LEN + 1);
+    memmove(d.str, s.c_str(), len);
+    return d;
+}
+
+
+// The string form of a value: string values as-is, numbers formatted the
+// same way tostr() formats them. Used by '+' when one operand is a string.
+std::string asStr(const DataType& v)
+{
+    if (v.type == DataType::typeStr)
+    {
+        return std::string(v.str);
+    }
+    std::ostringstream os;
+    os << v.dbl;
+    return os.str();
+}
+
+
 // Execute a top-level statement, absorbing a 'return' used outside any
 // function rather than letting it escape as an uncaught exception.
 void execTop(nodeType* p)
@@ -1610,6 +1658,13 @@ DataType ex(nodeType* p)
                     if (tryArrayReduce(fname, p->u.opr.op[1], red))
                     {
                         return red;
+                    }
+                    // len() also returns the length of a string (or of a
+                    // number's string form), like strlen.
+                    if (fname == "len")
+                    {
+                        d.dbl = (Double)asStr(ex(p->u.opr.op[1])).size();
+                        return d;
                     }
                 }
 
@@ -1841,25 +1896,16 @@ DataType ex(nodeType* p)
             {
                 DataType op0 = ex(p->u.opr.op[0]);
                 DataType op1 = ex(p->u.opr.op[1]);
-                if ((op0.type == DataType::typeDbl) && 
+                if ((op0.type == DataType::typeDbl) &&
                     (op1.type == DataType::typeDbl))
                 {
-                    d.dbl  = op0.dbl + op1.dbl;
+                    // Both numeric: add.
+                    d.dbl = op0.dbl + op1.dbl;
                 }
-                else if ((op0.type == DataType::typeStr) && 
-                         (op1.type == DataType::typeStr))
+                else
                 {
-                    std::string str0 = std::string(op0.str);
-                    std::string str1 = std::string(op1.str);
-                    std::string str  = str0 + str1;
-                    int len = (str.size() > MAX_STR_LEN) ? MAX_STR_LEN :
-                                                           str.size();
-                    // If the result has different type of data then
-                    // default, please mention it.
-                    d.type = DataType::typeStr;
-                    // Copy data.
-                    memset(d.str, 0, MAX_STR_LEN + 1);
-                    memmove(d.str, str.c_str(), len);
+                    // Otherwise concatenate, stringifying any number.
+                    return makeStr(asStr(op0) + asStr(op1));
                 }
             }
             return d;
@@ -2343,6 +2389,43 @@ DataType ex(nodeType* p)
                 memmove(d.str, s.c_str(), len);
             }
             return d;
+
+        case REVERSE:
+            {
+                std::string s = asStr(ex(p->u.opr.op[0]));
+                std::reverse(s.begin(), s.end());
+                return makeStr(s);
+            }
+
+        case FIND:
+            {
+                std::string s   = asStr(ex(p->u.opr.op[0]));
+                std::string sub = asStr(ex(p->u.opr.op[1]));
+                size_t pos = s.find(sub);
+                d.dbl = (pos == std::string::npos) ? (Double)-1 : (Double)pos;
+            }
+            return d;
+
+        case REPEAT:
+            {
+                std::string s = asStr(ex(p->u.opr.op[0]));
+                int k = (int)ex(p->u.opr.op[1]).dbl;
+                std::string out;
+                for (int j = 0; j < k; ++j)
+                {
+                    out += s;
+                    if (out.size() > MAX_STR_LEN) break;
+                }
+                return makeStr(out);
+            }
+
+        case CHARAT:
+            {
+                std::string s = asStr(ex(p->u.opr.op[0]));
+                int i = (int)ex(p->u.opr.op[1]).dbl;
+                return makeStr((i >= 0 && i < (int)s.size())
+                               ? std::string(1, s[i]) : std::string());
+            }
 
         case STRLEN:
             {

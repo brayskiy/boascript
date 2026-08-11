@@ -151,10 +151,28 @@
 
         upper(string)            - returns the string in upper case;
         lower(string)            - returns the string in lower case;
+        reverse(string)          - returns the string reversed;
+        repeat(string, num)      - the string repeated num times;
+        charat(string, num)      - one-character string at the given index
+                                   (empty if out of range);
 
         Example:
-            print upper("hello");   // HELLO
-            print lower("HELLO");   // hello
+            print upper("hello");         // HELLO
+            print lower("HELLO");         // hello
+            print reverse("abc");         // cba
+            print repeat("ab", 3);        // ababab
+            print charat("hello", 1);     // e
+
+        find(string, string)     - index of the first occurrence of the
+                                   second string, or -1 if not found;
+        len(string)              - length of a string (like strlen); also
+                                   returns the outer size of an array;
+
+        Example:
+            print find("hello world", "world");   // 6
+
+        Note: the '+' operator concatenates when either operand is a string,
+        stringifying a numeric operand, e.g. "count=" + 42 gives "count=42".
 
         date(string) - returns date or/and current time
         string       - format of output date.
