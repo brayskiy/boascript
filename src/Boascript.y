@@ -796,6 +796,50 @@ void run(const Column& in, Column& out)
 }
 
 
+// ---- Interactive session API ---------------------------------------------
+//
+// run() resets every bit of state on each call. A session instead keeps
+// variables, functions, arrays, and precision across runLine() calls, so an
+// interactive interpreter (a REPL) can build up state incrementally. Call
+// beginSession() once, runLine() per line, and endSession() when finished.
+
+void beginSession(void)
+{
+    Init();
+    // Give single-letter variables a defined initial value so that reading an
+    // as-yet-unassigned one yields 0 rather than an indeterminate value.
+    for (int i = 0; i <= 'z' - 'a'; ++i)
+    {
+        sym[i].type = DataType::typeDbl;
+        sym[i].dbl  = (Double)0;
+    }
+}
+
+std::string& runLine(std::string in)
+{
+    // Reset only the per-line parser state and the output buffer; variables,
+    // functions, arrays, precision, and the accumulated node arena carry over
+    // so definitions from earlier lines stay in effect.
+    yynerrs   = 0;
+    yyerrflag = 0;
+    yychar    = (-1);
+    yyssp     = yyss;
+    yyvsp     = yyvs;
+    *yyssp    = yystate = 0;
+    m_scopes.clear();
+    m_outBuf.clear();
+
+    Load(in);
+    yyparse();
+    return GetRes();
+}
+
+void endSession(void)
+{
+    Close();   // free the input buffer and the accumulated node arena
+}
+
+
 ~Boascript()
 {
     //Close();

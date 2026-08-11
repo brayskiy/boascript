@@ -66,9 +66,13 @@ test: ${PROJECT}
 demo: all
 	@$(MAKE) -C demo
 
+# Build the interactive REPL, boa (rebuilds the library first).
+cli: all
+	@$(MAKE) -C cli
+
 FORCE:
 
-.PHONY: all directory version clean test demo FORCE
+.PHONY: all directory version clean test demo cli FORCE
 
 ###
 
