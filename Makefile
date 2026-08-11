@@ -68,7 +68,7 @@ demo: all
 
 # Build the interactive REPL, boa (rebuilds the library first).
 cli: all
-	@$(MAKE) -C cli
+	@$(MAKE) -C apps/cli
 
 FORCE:
 

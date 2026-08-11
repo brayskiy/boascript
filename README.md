@@ -11,7 +11,7 @@ string and get the output back.
 * [APP](src) — BoaScript implementation (the `ooyacc` grammar `Boascript.y`).
 * [EXTRAS](extras) — supporting classes (types, tokenizer, date/time).
 * [TEST](test) — test suites, golden-file cases, and coverage tooling.
-* [CLI](cli) — `boa`, an interactive REPL for the language.
+* [CLI](apps/cli) — `boa`, an interactive REPL for the language.
 * [DEMO](demo) — an interactive CLI demo of the language features.
 * [DOC](doc) — the [language reference](doc/reference.md).
 
@@ -78,7 +78,7 @@ echoed; statements run silently.
 
 ```sh
 make cli          # builds the library and the REPL
-./cli/boa
+./apps/cli/boa
 ```
 
 ```
@@ -88,7 +88,7 @@ make cli          # builds the library and the REPL
 >>> exit()
 ```
 
-See [cli/README.md](cli/README.md) for details.
+See [apps/cli/README.md](apps/cli/README.md) for details.
 
 ## Demo
 

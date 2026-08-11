@@ -6,8 +6,8 @@ RM            = rm -rf
 
 CCFLAGS       = -O2 -DNDEBUG -DCALC_BATCH
 
-DIST_DIR      = ../distribution
-EXT_DIR       = ../extras
+DIST_DIR      = ../../distribution
+EXT_DIR       = ../../extras
 
 LDFLAGS       =
 LIBS          = -lBoascript
