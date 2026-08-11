@@ -282,7 +282,51 @@ TestCase testCase[] =
         "3.1415926535897932384626433832795",
         assertEqualDouble
     },
-    
+
+    // Multi-character (named) variables.
+
+    {
+        3000,
+        "total = 42; println total;",
+        "42",
+        assertEqualDouble
+    },
+
+    {
+        3002,
+        "price = 10; qty = 3; println price * qty;",
+        "30",
+        assertEqualDouble
+    },
+
+    {
+        3004,
+        "sum = 0; i = 1; while (i <= 5) { sum += i; ++i; } println sum;",
+        "15",
+        assertEqualDouble
+    },
+
+    {
+        3006,
+        "count = 5; count *= 3; count %= 4; println count;",
+        "3",
+        assertEqualDouble
+    },
+
+    {
+        3008,
+        "name = \"Boris\"; print name + \" R\";",
+        "Boris R",
+        assertEqualString
+    },
+
+    {
+        3010,
+        "a = 2; result = a * 10; println result;",
+        "20",
+        assertEqualDouble
+    },
+
 };
 
 

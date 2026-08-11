@@ -74,7 +74,7 @@ enum Const
 {
     SMALL_BUF_LEN = 32,
     MAX_STR_LEN   = 128,
-    VAR_NAME_LEN  = 16
+    VAR_NAME_LEN  = SMALL_BUF_LEN + 1
 };
 
 
@@ -214,7 +214,8 @@ stmt:
                | PRINT expr ';'         { $$ = opr(PRINT, 1, $2);            }
                | PRINTLN expr ';'       { $$ = opr(PRINTLN, 1, $2);          }
                | VARIABLE '=' expr      { $$ = opr('=', 2, id($1), $3);      }
-               | VARSTR '~' expr        { $$ = opr('~', 2, setVar($1), $3);  } 
+               | VARSTR '=' expr        { $$ = opr('=', 2, setVar($1), $3);  }
+               | VARSTR '~' expr        { $$ = opr('~', 2, setVar($1), $3);  }
                | WHILE '(' expr ')' stmt   { $$ = opr(WHILE, 2, $3, $5);     }
                | IF '(' expr ')' stmt %prec IFX 
                                         { $$ = opr(IF, 2, $3, $5);           }
@@ -233,7 +234,7 @@ expr:
                NUM                      { $$ = conD($1);                     }
                | STRING                 { $$ = conS($1);                     }
                | VARIABLE               { $$ = id($1);                       }
-               | VARSTR                 { $$ = getVar($1);                   }
+               | VARSTR                 { $$ = setVar($1);                   }
                | '(' expr ')'           { $$ = $2;                           }
                | '-' expr %prec UMINUS  { $$ = opr(UMINUS, 1, $2);           }
                | expr '+' expr          { $$ = opr('+', 2, $1, $3);          }
@@ -404,8 +405,10 @@ nodeType* setVar(std::string name)
 
     // copy information.
     p->type = nodeType::typeVar;
+    size_t nameLen = (name.size() >= VAR_NAME_LEN) ? (VAR_NAME_LEN - 1)
+                                                   : name.size();
     ::memset(&p->u.var.name[0], 0, VAR_NAME_LEN);
-    ::memmove(&p->u.var.name[0], name.c_str(), name.size());
+    ::memmove(&p->u.var.name[0], name.c_str(), nameLen);
 
 #ifdef VARSTR_DEBUG
 		std::cout << "setVar p->u.var.name = " << p->u.var.name << std::endl;
@@ -988,11 +991,16 @@ int yylex(void)
 				//::memset(&yylval.varName, 0, VAR_NAME_LEN);
 				//::memmove(&yylval.varName, buf, strlen(buf)); 
 				//return VARSTR;
+                // Any other identifier is a named (multi-character)
+                // variable. Copy the name, guarding against overflow.
+                size_t bl = strlen(buf);
+                if (bl >= VAR_NAME_LEN)
                 {
-                    std::ostringstream os;
-                    os << buf << " : ";
-                    yyerror("", os.str());
+                    bl = VAR_NAME_LEN - 1;
                 }
+                ::memset(&yylval.varName, 0, VAR_NAME_LEN);
+                ::memmove(&yylval.varName, buf, bl);
+                return VARSTR;
             }
         }
     } // if (::isalpha(cp))
@@ -1045,6 +1053,23 @@ int isLittleEndian(void)
         return 0;
     }
     return 1;
+}
+
+
+// Assign a value to a variable lvalue, dispatching on the node kind:
+// single-letter variables live in the sym[] array, named (multi-character)
+// variables live in the varStr map.
+DataType Assign(nodeType* lval, const DataType& val)
+{
+    if (lval && (lval->type == nodeType::typeVar))
+    {
+        varStr[lval->u.var.name] = val;
+    }
+    else if (lval)
+    {
+        sym[lval->u.id.i] = val;
+    }
+    return val;
 }
 
 
@@ -1173,7 +1198,7 @@ DataType ex(nodeType* p)
             return ex(p->u.opr.op[1]);
 
         case '=':
-            return sym[p->u.opr.op[0]->u.id.i] = ex(p->u.opr.op[1]);
+            return Assign(p->u.opr.op[0], ex(p->u.opr.op[1]));
             
         case '~':
             {
@@ -1273,17 +1298,17 @@ DataType ex(nodeType* p)
 
         case PLUS_ASSIGN:
             d.dbl = ex(p->u.opr.op[0]).dbl + ex(p->u.opr.op[1]).dbl;
-            sym[p->u.opr.op[0]->u.id.i] = d;
+            Assign(p->u.opr.op[0], d);
             return d;
                 
         case MINUS_ASSIGN:
             d.dbl = ex(p->u.opr.op[0]).dbl - ex(p->u.opr.op[1]).dbl;
-            sym[p->u.opr.op[0]->u.id.i] = d;
+            Assign(p->u.opr.op[0], d);
             return d;
                 
         case MUL_ASSIGN:
             d.dbl = ex(p->u.opr.op[0]).dbl * ex(p->u.opr.op[1]).dbl;
-            sym[p->u.opr.op[0]->u.id.i] = d;
+            Assign(p->u.opr.op[0], d);
             return d;
                
         case DIV_ASSIGN:
@@ -1298,7 +1323,7 @@ DataType ex(nodeType* p)
                 {
                     d.dbl = (Double)0;
                 }
-                sym[p->u.opr.op[0]->u.id.i] = d;
+                Assign(p->u.opr.op[0], d);
             }
             return d;
                
@@ -1314,18 +1339,18 @@ DataType ex(nodeType* p)
                 {
                     d.dbl = (Double)0;
                 }
-                sym[p->u.opr.op[0]->u.id.i] = d;
+                Assign(p->u.opr.op[0], d);
             }
             return d;
      
         case PREF_INC:
             d.dbl = ex(p->u.opr.op[0]).dbl + (Double)1;
-            sym[p->u.opr.op[0]->u.id.i] = d;
+            Assign(p->u.opr.op[0], d);
             return d;
 
         case PREF_DEC:
             d.dbl = ex(p->u.opr.op[0]).dbl - (Double)1;
-            sym[p->u.opr.op[0]->u.id.i] = d;
+            Assign(p->u.opr.op[0], d);
             return d;
 
         // Logical operations.
