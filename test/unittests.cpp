@@ -4,7 +4,7 @@
  * with testboascript.cpp and the golden-file cases these drive the
  * coverage measured by coverage.sh.
  *
- * Self-contained: no framework. Each check compares Boascript::Calc output
+ * Self-contained: no framework. Each check compares Boascript::run output
  * (exact string, substring, or numeric) and tallies pass/fail; main returns
  * non-zero if anything fails.
  */
@@ -26,7 +26,7 @@ static int g_fail = 0;
 static std::string run(const std::string& src)
 {
     Boascript bs;
-    return bs.Calc(src);
+    return bs.run(src);
 }
 
 // Exact string match of the whole output.
@@ -439,22 +439,22 @@ static void testLexer()
 }
 
 
-// The C++ API surface: the Calc() overloads and the Init/Load/GetRes/Close
+// The C++ API surface: the run() overloads and the Init/Load/GetRes/Close
 // sequence, plus object reuse.
 static void testApi()
 {
-    // Column Calc(Column&).
+    // Column run(Column&).
     {
         Boascript bs;
         Column in;
         in.push_back("print \"one\";");
         in.push_back("println 2 + 2;");
-        Column out = bs.Calc(in);
+        Column out = bs.run(in);
         if (out.size() == 2 && out[0] == "one") ++g_pass;
-        else { ++g_fail; std::cout << "FAIL [Calc(Column)]\n"; }
+        else { ++g_fail; std::cout << "FAIL [run(Column)]\n"; }
     }
 
-    // void Calc(const Column& in, Column& out) with out larger than in.
+    // void run(const Column& in, Column& out) with out larger than in.
     {
         Boascript bs;
         Column in;
@@ -462,9 +462,9 @@ static void testApi()
         Column out;
         out.push_back("");
         out.push_back("");     // no corresponding input -> "(empty)"
-        bs.Calc(in, out);
+        bs.run(in, out);
         if (out[0] == "x" && out[1] == "(empty)") ++g_pass;
-        else { ++g_fail; std::cout << "FAIL [Calc(in,out)]: [" << out[0]
+        else { ++g_fail; std::cout << "FAIL [run(in,out)]: [" << out[0]
                                    << "],[" << out[1] << "]\n"; }
     }
 
@@ -482,11 +482,11 @@ static void testApi()
         else { ++g_fail; std::cout << "FAIL [Init/Load/Close]: [" << r << "]\n"; }
     }
 
-    // Object reuse must not accumulate output across Calc() calls.
+    // Object reuse must not accumulate output across run() calls.
     {
         Boascript bs;
-        bs.Calc("print \"A\";");
-        std::string second = bs.Calc("print \"B\";");
+        bs.run("print \"A\";");
+        std::string second = bs.run("print \"B\";");
         if (second == "B") ++g_pass;
         else { ++g_fail; std::cout << "FAIL [reuse]: [" << second << "]\n"; }
     }

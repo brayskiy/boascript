@@ -5,7 +5,7 @@ Three complementary test suites, modeled on the ooyacc project's harness.
 ## 1. Embedded assertion suite — `testboascript`
 
 `testboascript.cpp` holds a table of `{ script, expected, comparator }`
-cases run directly against `Boascript::Calc`. Comparators are exact-string,
+cases run directly against `Boascript::run`. Comparators are exact-string,
 substring, and numeric (parse-and-compare) matches. Good for precise,
 self-contained assertions.
 
@@ -13,7 +13,7 @@ self-contained assertions.
 
 `unittests.cpp` is a self-contained (no-framework) unit-test program that
 exercises the interpreter API and every language construct, builtin,
-operator (numeric and string operands), error path, and the `Calc()`
+operator (numeric and string operands), error path, and the `run()`
 overloads / `Init`-`Load`-`GetRes`-`Close` sequence. It exists chiefly to
 drive coverage; see below.
 
@@ -26,7 +26,7 @@ against a golden file.
 ```
 test/
   driver.cpp        generic main(): reads a program (file arg or stdin),
-                    runs Boascript::Calc, writes output to stdout
+                    runs Boascript::run, writes output to stdout
   run_tests.sh      the harness (run -> diff), one case at a time
   cases/
     <name>.boa      a BoaScript program

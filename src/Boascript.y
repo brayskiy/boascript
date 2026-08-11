@@ -35,7 +35,7 @@
 //    c.Close();
 //    std::cout << c.GetRes() << std::endl;
 //
-//    std::cout << c.Calc("a=2; b=3; c=a*b; d = sqrt(c); print d;") 
+//    std::cout << c.run("a=2; b=3; c=a*b; d = sqrt(c); print d;") 
 //              << std::endl;
 //    
 //#endif // CALC_BATCH 
@@ -754,7 +754,7 @@ public:
 #ifdef CALC_BATCH
 
 
-std::string& Calc(const std::string in)
+std::string& run(const std::string in)
 {
     Init();
     Load(in);
@@ -764,7 +764,7 @@ std::string& Calc(const std::string in)
 }
 
 
-Column Calc(Column& in)
+Column run(Column& in)
 {
     Column outStr;
     for (ColIt it = in.begin(); it != in.end(); ++it)
@@ -779,7 +779,7 @@ Column Calc(Column& in)
 }
 
 
-void Calc(const Column& in, Column& out)
+void run(const Column& in, Column& out)
 {
     for (size_t i = 0; i < out.size(); ++i)
     {
@@ -831,7 +831,7 @@ void Init(void)
     arrays.clear();
     m_scopes.clear();
 
-    // Clear any output left over from a previous Calc() on this object.
+    // Clear any output left over from a previous run() on this object.
     m_outBuf.clear();
 
     precision = 7;

@@ -21,12 +21,12 @@ string and get the output back.
 using namespace BoriSoft;
 
 Boascript bs;
-std::string& res = bs.Calc("x = 0; b = 2; s = (b - x) / 500; "
+std::string& res = bs.run("x = 0; b = 2; s = (b - x) / 500; "
                            "while (x <= b) { y = sin(x); x += s; } println x;");
 std::cout << res << std::endl;   // 2.0000000
 ```
 
-`Calc` also accepts and returns a `Column` (vector of strings) for batch use.
+`run` also accepts and returns a `Column` (vector of strings) for batch use.
 
 ## Language Features
 
