@@ -1,0 +1,44 @@
+name: Branch policy
+
+# Enforce the allowed merge sources:
+#   * master  may only be updated by merging from develop.
+#   * develop may only be updated by merging from a work branch
+#     (anything that is not master or develop).
+#
+# This check fails the pull request when its source branch is not allowed.
+# Preventing *direct* pushes to master/develop is done by branch protection
+# rules (see .github/branch-protection.md), which a workflow cannot do.
+
+on:
+  pull_request:
+    branches: [ master, develop ]
+
+jobs:
+  merge-source:
+    name: Enforce merge source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check pull-request source branch
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+        run: |
+          echo "Pull request: '$HEAD' -> '$BASE'"
+          case "$BASE" in
+            master)
+              if [ "$HEAD" != "develop" ]; then
+                echo "::error::master can only be updated by merging from 'develop' (this PR is from '$HEAD')."
+                exit 1
+              fi
+              ;;
+            develop)
+              if [ "$HEAD" = "master" ] || [ "$HEAD" = "develop" ]; then
+                echo "::error::develop can only be updated by merging from a work branch (this PR is from '$HEAD')."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "No source-branch policy for base '$BASE'."
+              ;;
+          esac
+          echo "Merge source is allowed."
