@@ -46,6 +46,7 @@
 #include <BTypes.h>
 #include <DateTime.h>
 #include <Tokenizer.h>
+#include "Version.h"
 //#include <BoascriptException.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1828,6 +1829,20 @@ DataType ex(nodeType* p)
                 // op[0] carries the function name; op[1..] the arguments.
                 std::string fname = p->u.opr.op[0]->u.var.name;
                 int nargs = p->u.opr.nops - 1;
+
+                // Zero-argument informational builtins (unless shadowed by a
+                // user function of the same name).
+                if ((nargs == 0) && (funcs.find(fname) == funcs.end()))
+                {
+                    if (fname == "version")
+                    {
+                        return makeStr(BOASCRIPT_VERSION);
+                    }
+                    if ((fname == "about") || (fname == "description"))
+                    {
+                        return makeStr(BOASCRIPT_DESCRIPTION);
+                    }
+                }
 
                 // len/sum/avg/prod on a named array take precedence over a
                 // user function only when no such user function is defined.

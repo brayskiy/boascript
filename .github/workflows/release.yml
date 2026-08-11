@@ -1,0 +1,66 @@
+name: Release
+
+# Promote the release version on every merge into master. The version has
+# the form YY.WW.BB (ISO year, ISO week, patch); BB increments within the
+# same year+week and restarts at 01 when the week rolls over. The version is
+# stored as an annotated git tag vYY.WW.BB (no commit to the protected master
+# branch is needed) plus a GitHub Release.
+
+on:
+  push:
+    branches: [ master ]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Promote version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute and create the version tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+
+          # If this exact commit is already tagged with a version, do nothing.
+          if git describe --exact-match --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD >/dev/null 2>&1; then
+            echo "HEAD is already tagged $(git describe --exact-match --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD); nothing to do."
+            exit 0
+          fi
+
+          YY=$(date -u +%g)   # 2-digit ISO year
+          WW=$(date -u +%V)   # ISO week number
+          prefix="v${YY}.${WW}."
+
+          # Highest existing patch for this year+week, or 0 if none.
+          last=$(git tag -l "${prefix}*" | sed "s|^${prefix}||" | sort -n | tail -1)
+          if [ -z "$last" ]; then
+            BB=01
+          else
+            BB=$(printf "%02d" $((10#$last + 1)))
+          fi
+
+          tag="v${YY}.${WW}.${BB}"
+          echo "Promoting version to ${tag}"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release $tag"
+          git push origin "$tag"
+
+          gh release create "$tag" \
+            --title "$tag" \
+            --target "$GITHUB_SHA" \
+            --notes "Automated release ${tag}, promoted on merge into master."

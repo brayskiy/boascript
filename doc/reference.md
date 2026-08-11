@@ -362,6 +362,20 @@
         Note that max/min with two numeric arguments remain the ordinary
         two-argument builtins: max(3, 8) is 8.
 
+### 9c. Version and description.
+
+        version()     - the release version string, in the form YY.WW.BB
+                        (two-digit year, week of year, patch);
+        about()       - the application description string;
+        description() - an alias for about().
+
+        The version is set from the release tag at build time and is
+        promoted (patch incremented) each time develop is merged into master.
+
+        Example:
+            print "BoaScript " + version();   // e.g. BoaScript 26.32.01
+            print about();
+
 ### 10. Comments.
          Line or part of line will be ignored by the interpreter from double
          slash to the end of line.
