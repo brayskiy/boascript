@@ -23,7 +23,7 @@ struct TestCase
 bool assertEqualString(const char* test, const char* check)
 {
     Boascript bs;
-    std::string& res = bs.Calc(test);
+    std::string& res = bs.run(test);
 #ifdef TEST_DEBUG
     std::cout << res << " = " << check << std::endl;
 #endif
@@ -33,7 +33,7 @@ bool assertEqualString(const char* test, const char* check)
 bool assertLikeString(const char* test, const char* check)
 {
     Boascript bs;
-    std::string& res = bs.Calc(test);
+    std::string& res = bs.run(test);
 #ifdef TEST_DEBUG
     std::cout << res << std::endl;
 #endif
@@ -49,7 +49,7 @@ bool assertEqualDouble(const char* test, const char* check)
 
     Double res;
     //util::Tokenizer::string2double(bs.GetRes(), res);
-    util::Tokenizer::string2double(bs.Calc(test), res);
+    util::Tokenizer::string2double(bs.run(test), res);
     Double chk;
     util::Tokenizer::string2double(check, chk);
 #ifdef TEST_DEBUG
@@ -554,7 +554,7 @@ int main(int argc, char** argv)
         std::cout << c.GetRes() << std::endl;
         c.Close();
         
-        //std::cout << bs.Calc(str[i]) << std::endl;
+        //std::cout << bs.run(str[i]) << std::endl;
     }
 
     // Third part.
@@ -565,7 +565,7 @@ int main(int argc, char** argv)
         in.push_back("s = \"First  Item\"; println s;");
         in.push_back("t = \"Second Item\"; println t;");
         in.push_back("a = sqrt(2); println a;");
-        Column out = y.Calc(in);
+        Column out = y.run(in);
         for (ColIt it = out.begin(); it != out.end(); ++it)
         {
             std::cout << *it << std::endl;
@@ -586,7 +586,7 @@ int main(int argc, char** argv)
         out.push_back("");
         out.push_back("");
         out.push_back("");
-        y.Calc(in, out);
+        y.run(in, out);
         for (ColIt it = out.begin(); it != out.end(); ++it)
         {
             std::cout << *it << std::endl;
@@ -616,7 +616,7 @@ int main(int argc, char** argv)
         boaScript << "    x += s"            << ";" << std::endl; 
         boaScript << "}"                            << std::endl;  
         
-        std::string& out = y.Calc(boaScript.str());
+        std::string& out = y.run(boaScript.str());
         //std::cout << out << std::endl;
     }
     

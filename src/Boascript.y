@@ -1,44 +1,41 @@
-/* Calcmill.y                  -*-YACC-*-                        */
+/* Boascript.y                  -*-YACC-*-                        */
 
-//@PURPOSE: Interpretating language, regular expressions evaluator.
+//@PURPOSE: BoaScript -- a light, C-style scripting language and calculator.
 //
 //@CLASSES:
-//  
+//  Boascript: parser and tree-walking interpreter for the language.
 //
 //@AUTHOR: Boris Rayskiy
 //
-//@SEE_ALSO: 
+//@SEE_ALSO: doc/reference.md
 //
-//@DESCRIPTION: 
+//@DESCRIPTION: This ooyacc grammar defines the BoaScript language together
+// with its interpreter as a single self-contained C++ class, Boascript. A
+// script is parsed into an AST which is then evaluated by ex().
+//
+// The language supports numbers (decimal, scientific, and 0x/0b/0o integer
+// literals) and strings; single- and multi-character variables with plain
+// and compound assignment; the usual arithmetic, comparison, logical, and
+// bitwise operators with C-style precedence; control flow (if/else, while,
+// for, case/when); user-defined functions with recursion and local scope;
+// arrays, including nested / multi-dimensional ones; and a large set of math
+// and string builtins. version()/about() report the build version and app
+// description. See doc/reference.md for the full language reference.
 //
 ///Usage:
-///
-//   
-//#ifndef CALC_BATCH
+//  Construct a Boascript and hand a script to run(); it returns the text the
+//  script printed. The object is built with CALC_BATCH so output is captured
+//  into a string rather than written to stdout.
 //
-//    BoaScript c;
-//    c.yyparse();
+//    #include <Boascript.tab.h>
+//    using namespace BoriSoft;
 //
-//#else
+//    Boascript bs;
+//    std::string& out = bs.run("a = 2; b = 3; println sqrt(a * b);");
+//    std::cout << out << std::endl;   // 2.4494897
 //
-//    BoaScript c;
-//
-//    c.Init();
-//    c.Load("a=sqrt(2); print a; //Comment is here");
-//    c.yyparse();
-//    c.Close();
-//    std::cout << c.GetRes() << std::endl;
-
-//    c.Init();
-//    c.Load("a=sqrt(3); print a; //Another comment");
-//    c.yyparse();
-//    c.Close();
-//    std::cout << c.GetRes() << std::endl;
-//
-//    std::cout << c.Calc("a=2; b=3; c=a*b; d = sqrt(c); print d;") 
-//              << std::endl;
-//    
-//#endif // CALC_BATCH 
+//  run() is overloaded to also take and return a Column (a vector of script
+//  strings / their outputs) for batch evaluation.
 
 %{
 
@@ -754,7 +751,7 @@ public:
 #ifdef CALC_BATCH
 
 
-std::string& Calc(const std::string in)
+std::string& run(const std::string in)
 {
     Init();
     Load(in);
@@ -764,7 +761,7 @@ std::string& Calc(const std::string in)
 }
 
 
-Column Calc(Column& in)
+Column run(Column& in)
 {
     Column outStr;
     for (ColIt it = in.begin(); it != in.end(); ++it)
@@ -779,7 +776,7 @@ Column Calc(Column& in)
 }
 
 
-void Calc(const Column& in, Column& out)
+void run(const Column& in, Column& out)
 {
     for (size_t i = 0; i < out.size(); ++i)
     {
@@ -831,7 +828,7 @@ void Init(void)
     arrays.clear();
     m_scopes.clear();
 
-    // Clear any output left over from a previous Calc() on this object.
+    // Clear any output left over from a previous run() on this object.
     m_outBuf.clear();
 
     precision = 7;
