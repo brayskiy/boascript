@@ -4,7 +4,7 @@
  *
  * It reads a whole BoaScript program -- from the file named as the first
  * argument, or from stdin when no argument is given -- hands it to
- * Boascript::Calc(), and writes the interpreter's output to stdout. That
+ * Boascript::run(), and writes the interpreter's output to stdout. That
  * lets a single binary run every golden-file case in cases/ (run the
  * script, diff stdout against <name>.expected).
  */
@@ -40,7 +40,7 @@ int main(int argc, char** argv)
     }
 
     Boascript bs;
-    std::cout << bs.Calc(source.str());
+    std::cout << bs.run(source.str());
 
     return 0;
 }

@@ -3,7 +3,7 @@
 # BoaScript golden-file test harness, modeled on the ooyacc test suite.
 #
 # For every program in cases/<name>.boa:
-#   1. run it through the driver (which calls Boascript::Calc)
+#   1. run it through the driver (which calls Boascript::run)
 #   2. diff its stdout against the golden file cases/<name>.expected
 #
 # Exit status is non-zero if any case fails.

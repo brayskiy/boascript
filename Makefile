@@ -62,9 +62,17 @@ clean:
 test: ${PROJECT}
 	@$(MAKE) -C ${TEST_DIR} check
 
+# Build the interactive CLI demo (rebuilds the library first).
+demo: all
+	@$(MAKE) -C demo
+
+# Build the interactive REPL, boa (rebuilds the library first).
+cli: all
+	@$(MAKE) -C cli
+
 FORCE:
 
-.PHONY: all directory version clean test FORCE
+.PHONY: all directory version clean test demo cli FORCE
 
 ###
 
