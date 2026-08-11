@@ -282,6 +282,14 @@
             }
             println gaussint(0, 1);   // 0.3333333
 
+        The same 3-point Gauss-Legendre integration is also available as a
+        builtin, intgauss3(f, a, b), where f is a one-parameter user
+        function and a, b are the bounds. It is exact for polynomials up to
+        degree 5.
+
+            func f(x) { return x * x; }
+            println intgauss3(f, 0, 1);   // 0.3333333
+
 ### 10. Comments.
          Line or part of line will be ignored by the interpreter from double
          slash to the end of line.

@@ -195,6 +195,7 @@ struct BoaReturn
 %token WHILE FOR IF PRINT PRINTLN IFN IFS
 %token FUNC RETURN UCALL
 %token CASE WHEN
+%token INTGAUSS3
 %token STRLEN SUBSTR REPLACE SUBSTITUTE TOSTR TONUM
 %token ABS ACOS ASIN ATAN ATAN2 CEIL COS COSH EXP FABS FLOOR FMOD
 %token FREXP LDEXP LOG LOG10 MODF POW SIN SINH SQRT CBRT TAN TANH
@@ -324,6 +325,10 @@ expr:
                | VARSTR                 { $$ = setVar($1);                   }
                | VARSTR '(' args ')'    { $$ = callFunc(std::string($1), $3);}
                | VARIABLE '(' args ')'  { $$ = callFunc(varOf($1), $3);      }
+               | INTGAUSS3 '(' VARSTR ',' expr ',' expr ')'
+                     { $$ = opr(INTGAUSS3, 3, setVar(std::string($3)), $5, $7); }
+               | INTGAUSS3 '(' VARIABLE ',' expr ',' expr ')'
+                     { $$ = opr(INTGAUSS3, 3, setVar(varOf($3)), $5, $7);       }
                | '(' expr ')'           { $$ = $2;                           }
                | '-' expr %prec UMINUS  { $$ = opr(UMINUS, 1, $2);           }
                | expr '+' expr          { $$ = opr('+', 2, $1, $3);          }
@@ -966,6 +971,10 @@ int yylex(void)
             {
                 return RETURN;
             }
+            else if (strcmp(buf, "intgauss3") == 0)
+            {
+                return INTGAUSS3;
+            }
             else if (strcmp(buf, "case") == 0)
             {
                 return CASE;
@@ -1261,6 +1270,55 @@ DataType Assign(nodeType* lval, const DataType& val)
 }
 
 
+// Invoke a user-defined function by name with already-evaluated arguments.
+// A fresh local frame binds the parameters (missing arguments default to 0);
+// the body runs until it returns or falls off the end.
+DataType invokeFunc(const std::string& name, const std::vector<DataType>& argv)
+{
+    DataType ret;
+    ret.type = DataType::typeDbl;
+    ret.dbl  = (Double)0;
+
+    std::map<std::string, FuncDef>::iterator it = funcs.find(name);
+    if (it == funcs.end())
+    {
+        yyerror("undefined function: ", name);
+        return ret;
+    }
+
+    FuncDef& fn = it->second;
+
+    std::map<std::string, DataType> frame;
+    for (size_t k = 0; k < fn.params.size(); ++k)
+    {
+        frame[fn.params[k]] = (k < argv.size()) ? argv[k] : DataType();
+    }
+
+    m_scopes.push_back(frame);
+    try
+    {
+        ex(fn.body);
+    }
+    catch (BoaReturn& r)
+    {
+        ret = r.value;
+    }
+    m_scopes.pop_back();
+    return ret;
+}
+
+
+// Call a one-argument user function with a numeric argument and return its
+// numeric result. Used by the intgauss3 builtin to sample the integrand.
+double callF1(const std::string& name, double x)
+{
+    std::vector<DataType> argv(1);
+    argv[0].type = DataType::typeDbl;
+    argv[0].dbl  = x;
+    return invokeFunc(name, argv).dbl;
+}
+
+
 // Execute a top-level statement, absorbing a 'return' used outside any
 // function rather than letting it escape as an uncaught exception.
 void execTop(nodeType* p)
@@ -1373,47 +1431,44 @@ DataType ex(nodeType* p)
         case UCALL:
             {
                 // op[0] carries the function name; op[1..] the arguments.
-                std::string fname = p->u.opr.op[0]->u.var.name;
-                std::map<std::string, FuncDef>::iterator it = funcs.find(fname);
-                if (it == funcs.end())
-                {
-                    yyerror("undefined function: ", fname);
-                    return d;
-                }
-
-                FuncDef& fn = it->second;
-
                 // Evaluate the arguments in the current scope first.
+                std::string fname = p->u.opr.op[0]->u.var.name;
                 int nargs = p->u.opr.nops - 1;
                 std::vector<DataType> argv;
                 for (int k = 0; k < nargs; ++k)
                 {
                     argv.push_back(ex(p->u.opr.op[k + 1]));
                 }
-
-                // Bind parameters into a fresh local frame.
-                std::map<std::string, DataType> frame;
-                for (size_t k = 0; k < fn.params.size(); ++k)
-                {
-                    frame[fn.params[k]] = (k < argv.size()) ? argv[k]
-                                                            : DataType();
-                }
-
-                m_scopes.push_back(frame);
-                DataType ret;
-                ret.type = DataType::typeDbl;
-                ret.dbl  = (Double)0;
-                try
-                {
-                    ex(fn.body);
-                }
-                catch (BoaReturn& r)
-                {
-                    ret = r.value;
-                }
-                m_scopes.pop_back();
-                return ret;
+                return invokeFunc(fname, argv);
             }
+
+        case INTGAUSS3:
+            {
+                // intgauss3(f, a, b): 3-point Gauss-Legendre integral of the
+                // user function f over [a, b]. op[0] carries the function
+                // name; op[1] and op[2] are the bounds. Nodes +/-sqrt(3/5)
+                // and 0 with weights 5/9, 8/9, 5/9, mapped from [-1,1] to
+                // [a,b] via x = h*xi + c. Exact for polynomials up to
+                // degree 5.
+                std::string fname = p->u.opr.op[0]->u.var.name;
+                if (funcs.find(fname) == funcs.end())
+                {
+                    yyerror("undefined function: ", fname);
+                    return d;
+                }
+
+                double a = (double)ex(p->u.opr.op[1]).dbl;
+                double b = (double)ex(p->u.opr.op[2]).dbl;
+
+                double h = (b - a) / 2.0;
+                double c = (a + b) / 2.0;
+                double s = sqrt(3.0 / 5.0);
+
+                d.dbl = (Double)(h * (5.0 / 9.0 * callF1(fname, c - h * s)
+                                    + 8.0 / 9.0 * callF1(fname, c)
+                                    + 5.0 / 9.0 * callF1(fname, c + h * s)));
+            }
+            return d;
 
         case IF:
             {

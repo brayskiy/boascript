@@ -391,6 +391,14 @@ TestCase testCase[] =
         assertEqualDouble
     },
 
+    // The intgauss3 builtin: integral of x^2 over [0,1] = 1/3.
+    {
+        4014,
+        "func f(x) { return x * x; } println intgauss3(f, 0, 1);",
+        "0.3333333",
+        assertEqualDouble
+    },
+
 };
 
 

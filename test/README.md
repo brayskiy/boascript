@@ -85,6 +85,7 @@ lines, 80% branches — are met (97.6% / 88.2%).
 | `functions`  | `func` definitions, parameters, `return`, recursion, local scope, functions calling functions |
 | `caseof`     | `case (e) { when v: .. else: .. }` selection, block arms, `case` inside a function |
 | `gaussint`   | 3-point Gauss-Legendre integration written in BoaScript: a user function calling the integrand (another user function) |
+| `intgauss3`  | the `intgauss3(f, a, b)` builtin: 3-point Gauss-Legendre integration of a named user function |
 
 ## Adding a golden-file case
 

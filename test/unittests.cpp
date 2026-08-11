@@ -270,6 +270,21 @@ static void testFunctions()
 }
 
 
+static void testIntgauss3()
+{
+    // 3-point Gauss-Legendre is exact for polynomials up to degree 5.
+    eqNum("ig_x2",   "func f(x) { return x * x; } println intgauss3(f, 0, 1);", 1.0 / 3.0);
+    eqNum("ig_x3",   "func g(x) { return x * x * x; } println intgauss3(g, 0, 2);", 4.0);
+    eqNum("ig_poly", "func p(x) { return 3*x*x + 2*x + 1; } println intgauss3(p, 0, 1);", 3.0);
+    eqNum("ig_x5",   "func q(x) { return x*x*x*x*x; } println intgauss3(q, 0, 1);", 1.0 / 6.0);
+    eqNum("ig_sin",  "func s(x) { return sin(x); } println intgauss3(s, 0, pi());", 2.001389, 1e-5);
+    // A single-letter function name (VARIABLE form of the rule).
+    eqNum("ig_single", "func a(x) { return x * x; } println intgauss3(a, 0, 1);", 1.0 / 3.0);
+    // An undefined integrand is reported once, not crashed on.
+    hasStr("ig_undef", "println intgauss3(nofunc, 0, 1);", "undefined function");
+}
+
+
 static void testLexer()
 {
     eqNum("sci_pos",   "println 1.5e3;", 1500);
@@ -351,6 +366,7 @@ int main()
     testPrecision();
     testControl();
     testFunctions();
+    testIntgauss3();
     testLexer();
     testApi();
 
