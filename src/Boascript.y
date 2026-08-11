@@ -196,6 +196,7 @@ struct BoaReturn
 %token FUNC RETURN UCALL
 %token CASE WHEN
 %token INTGAUSS3
+%token ARRAY_MAKE ARRAY_GET ARRAY_SET ARRAY_MAX ARRAY_MIN
 %token STRLEN SUBSTR REPLACE SUBSTITUTE TOSTR TONUM
 %token ABS ACOS ASIN ATAN ATAN2 CEIL COS COSH EXP FABS FLOOR FMOD
 %token FREXP LDEXP LOG LOG10 MODF POW SIN SINH SQRT CBRT TAN TANH
@@ -220,7 +221,7 @@ struct BoaReturn
 
 %type <nPtr>  stmt expr stmt_list funcdef for_init
 %type <sList> params paramlist
-%type <nList> args arglist arms
+%type <nList> args arglist arms elems elemlist
 
 %%
 
@@ -241,6 +242,14 @@ stmt:
                | VARIABLE '=' expr      { $$ = opr('=', 2, id($1), $3);      }
                | VARSTR '=' expr        { $$ = opr('=', 2, setVar($1), $3);  }
                | VARSTR '~' expr        { $$ = opr('~', 2, setVar($1), $3);  }
+               | VARIABLE '=' '[' elems ']'
+                     { $$ = arrayMake(varOf($1), $4);                        }
+               | VARSTR '=' '[' elems ']'
+                     { $$ = arrayMake(std::string($1), $4);                  }
+               | VARIABLE '[' expr ']' '=' expr
+                     { $$ = opr(ARRAY_SET, 3, setVar(varOf($1)), $3, $6);    }
+               | VARSTR '[' expr ']' '=' expr
+                     { $$ = opr(ARRAY_SET, 3, setVar(std::string($1)), $3, $6); }
                | WHILE '(' expr ')' stmt   { $$ = opr(WHILE, 2, $3, $5);     }
                | FOR '(' for_init ';' expr ';' for_init ')' stmt
                                         { $$ = opr(FOR, 4, $3, $5, $7, $9);  }
@@ -306,6 +315,18 @@ arglist:
                | arglist ',' expr       { $1->push_back($3); $$ = $1;        }
                ;
 
+// The elements of an array literal [ e1, e2, ... ] (possibly empty).
+elems:
+               /* empty */              { $$ = new std::vector<nodeType*>(); }
+               | elemlist               { $$ = $1;                           }
+               ;
+
+elemlist:
+               expr                     { $$ = new std::vector<nodeType*>();
+                                          $$->push_back($1);                 }
+               | elemlist ',' expr      { $1->push_back($3); $$ = $1;        }
+               ;
+
 // The arms of a case statement, flattened into (value, body) pairs. The
 // default arm ("else:") is stored with a null value.
 arms:
@@ -325,6 +346,12 @@ expr:
                | VARSTR                 { $$ = setVar($1);                   }
                | VARSTR '(' args ')'    { $$ = callFunc(std::string($1), $3);}
                | VARIABLE '(' args ')'  { $$ = callFunc(varOf($1), $3);      }
+               | VARIABLE '[' expr ']'  { $$ = opr(ARRAY_GET, 2, setVar(varOf($1)), $3);      }
+               | VARSTR '[' expr ']'    { $$ = opr(ARRAY_GET, 2, setVar(std::string($1)), $3);}
+               | MAX  '(' VARIABLE ')'  { $$ = opr(ARRAY_MAX, 1, setVar(varOf($3)));      }
+               | MAX  '(' VARSTR ')'    { $$ = opr(ARRAY_MAX, 1, setVar(std::string($3))); }
+               | MIN  '(' VARIABLE ')'  { $$ = opr(ARRAY_MIN, 1, setVar(varOf($3)));      }
+               | MIN  '(' VARSTR ')'    { $$ = opr(ARRAY_MIN, 1, setVar(std::string($3))); }
                | INTGAUSS3 '(' VARSTR ',' expr ',' expr ')'
                      { $$ = opr(INTGAUSS3, 3, setVar(std::string($3)), $5, $7); }
                | INTGAUSS3 '(' VARIABLE ',' expr ',' expr ')'
@@ -615,6 +642,35 @@ nodeType* caseStmt(nodeType* sw, std::vector<nodeType*>* arms)
 }
 
 
+// Build an array-literal node: op[0] carries the target array name, op[1..]
+// the element expressions. The element list is consumed.
+nodeType* arrayMake(std::string name, std::vector<nodeType*>* elems)
+{
+    int nops = 1 + (int)elems->size();
+
+    nodeType* p = 0;
+    size_t nodeSize = SIZEOF_NODETYPE + sizeof(nodeType::oprNodeType) +
+                      (nops - 1) * sizeof(nodeType*);
+    if ((p = (nodeType *)malloc(nodeSize)) == 0)
+    {
+        yyerror("out of memory");
+    }
+
+    p->type        = nodeType::typeOpr;
+    p->u.opr.oper  = ARRAY_MAKE;
+    p->u.opr.nops  = nops;
+    p->u.opr.op[0] = setVar(name);
+    for (int i = 0; i < (int)elems->size(); ++i)
+    {
+        p->u.opr.op[i + 1] = (*elems)[i];
+    }
+
+    delete elems;
+    m_nodes.push_back(p);
+    return p;
+}
+
+
 void yyerror(std::string msg)
 {
 #ifndef CALC_BATCH
@@ -723,6 +779,7 @@ void Init(void)
     // Functions reference arena nodes freed by FreeNodes(); drop them and
     // any leftover call frames before the next parse.
     funcs.clear();
+    arrays.clear();
     m_scopes.clear();
 
     // Clear any output left over from a previous Calc() on this object.
@@ -1330,6 +1387,57 @@ DataType Assign(nodeType* lval, const DataType& val)
 }
 
 
+// Array reductions len/sum/avg/prod are dispatched by name at call time
+// (rather than reserved as keywords, so those words remain usable as
+// ordinary variables). Returns true and fills 'out' when fname is a
+// reduction and 'arg' is a bare variable naming a defined array.
+bool tryArrayReduce(const std::string& fname, nodeType* arg, DataType& out)
+{
+    if (!arg ||
+        ((arg->type != nodeType::typeId) && (arg->type != nodeType::typeVar)))
+    {
+        return false;
+    }
+
+    std::map<std::string, std::vector<Double> >::iterator it =
+        arrays.find(nameOfVar(arg));
+    if (it == arrays.end())
+    {
+        return false;
+    }
+    std::vector<Double>& v = it->second;
+
+    out.type = DataType::typeDbl;
+    if (fname == "len")
+    {
+        out.dbl = (Double)v.size();
+    }
+    else if (fname == "sum")
+    {
+        Double s = 0;
+        for (size_t k = 0; k < v.size(); ++k) s += v[k];
+        out.dbl = s;
+    }
+    else if (fname == "avg")
+    {
+        Double s = 0;
+        for (size_t k = 0; k < v.size(); ++k) s += v[k];
+        out.dbl = v.empty() ? (Double)0 : s / (Double)v.size();
+    }
+    else if (fname == "prod")
+    {
+        Double pr = 1;
+        for (size_t k = 0; k < v.size(); ++k) pr *= v[k];
+        out.dbl = pr;
+    }
+    else
+    {
+        return false;
+    }
+    return true;
+}
+
+
 // Invoke a user-defined function by name with already-evaluated arguments.
 // A fresh local frame binds the parameters (missing arguments default to 0);
 // the body runs until it returns or falls off the end.
@@ -1491,9 +1599,21 @@ DataType ex(nodeType* p)
         case UCALL:
             {
                 // op[0] carries the function name; op[1..] the arguments.
-                // Evaluate the arguments in the current scope first.
                 std::string fname = p->u.opr.op[0]->u.var.name;
                 int nargs = p->u.opr.nops - 1;
+
+                // len/sum/avg/prod on a named array take precedence over a
+                // user function only when no such user function is defined.
+                if ((nargs == 1) && (funcs.find(fname) == funcs.end()))
+                {
+                    DataType red;
+                    if (tryArrayReduce(fname, p->u.opr.op[1], red))
+                    {
+                        return red;
+                    }
+                }
+
+                // Evaluate the arguments in the current scope first.
                 std::vector<DataType> argv;
                 for (int k = 0; k < nargs; ++k)
                 {
@@ -1530,6 +1650,57 @@ DataType ex(nodeType* p)
             }
             return d;
 
+        // Arrays. op[0] of every array node carries the array name.
+
+        case ARRAY_MAKE:
+            {
+                std::vector<Double> v;
+                for (int k = 1; k < p->u.opr.nops; ++k)
+                {
+                    v.push_back((Double)ex(p->u.opr.op[k]).dbl);
+                }
+                arrays[p->u.opr.op[0]->u.var.name] = v;
+            }
+            return d;
+
+        case ARRAY_GET:
+            {
+                std::vector<Double>& v = arrays[p->u.opr.op[0]->u.var.name];
+                int i = (int)ex(p->u.opr.op[1]).dbl;
+                d.dbl = (i >= 0 && i < (int)v.size()) ? v[i] : (Double)0;
+            }
+            return d;
+
+        case ARRAY_SET:
+            {
+                std::vector<Double>& v = arrays[p->u.opr.op[0]->u.var.name];
+                int i = (int)ex(p->u.opr.op[1]).dbl;
+                Double val = (Double)ex(p->u.opr.op[2]).dbl;
+                if (i >= 0 && i < (int)v.size())
+                {
+                    v[i] = val;
+                }
+            }
+            return d;
+
+        case ARRAY_MAX:
+            {
+                std::vector<Double>& v = arrays[p->u.opr.op[0]->u.var.name];
+                Double m = v.empty() ? (Double)0 : v[0];
+                for (size_t k = 0; k < v.size(); ++k) if (v[k] > m) m = v[k];
+                d.dbl = m;
+            }
+            return d;
+
+        case ARRAY_MIN:
+            {
+                std::vector<Double>& v = arrays[p->u.opr.op[0]->u.var.name];
+                Double m = v.empty() ? (Double)0 : v[0];
+                for (size_t k = 0; k < v.size(); ++k) if (v[k] < m) m = v[k];
+                d.dbl = m;
+            }
+            return d;
+
         case IF:
             {
                 if ((int)ex(p->u.opr.op[0]).dbl)
@@ -1546,9 +1717,34 @@ DataType ex(nodeType* p)
         case PRINT:
         case PRINTLN:
             {
+                // If the operand is a bare variable naming a defined array,
+                // print the whole array (space-separated) instead of a scalar.
+                nodeType* arg = p->u.opr.op[0];
+                if (arg &&
+                    ((arg->type == nodeType::typeVar) ||
+                     (arg->type == nodeType::typeId)) &&
+                    (arrays.find(nameOfVar(arg)) != arrays.end()))
+                {
+                    std::vector<Double>& v = arrays[nameOfVar(arg)];
+                    std::ostringstream oss(std::ostringstream::out);
+                    oss << std::fixed << std::setprecision(precision <= 0 ? 7
+                                                                         : precision);
+                    for (size_t k = 0; k < v.size(); ++k)
+                    {
+                        if (k) oss << " ";
+                        oss << v[k];
+                    }
+                    if (p->u.opr.oper == PRINTLN)
+                    {
+                        oss << std::endl;
+                    }
+                    m_outBuf += oss.str();
+                    return d;
+                }
+
                 DataType tmp = ex(p->u.opr.op[0]);
 #ifdef VARSTR_DEBUG
-				std::cout << "DataType tmp = " << tmp << std::endl; 
+				std::cout << "DataType tmp = " << tmp << std::endl;
 #endif
                 if (tmp.type == DataType::typeDbl)
                 {
@@ -2305,6 +2501,9 @@ private:
 
     // User-defined functions, by name.
     std::map<std::string, FuncDef>  funcs;
+
+    // Named arrays, by name.
+    std::map<std::string, std::vector<Double> > arrays;
 
     // Local-variable frames, one per active function call. Empty at top
     // level, where the globals (sym[] / varStr) are used instead.

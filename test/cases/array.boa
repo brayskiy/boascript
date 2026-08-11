@@ -1,0 +1,42 @@
+// Arrays: creation, element access/mutation, reductions, and printing.
+// Mirrors the ooyacc array example; the reduction values match it.
+
+a = [1, 2, 3, 4, 5];
+print a; println "";        // 1 2 3 4 5
+println len(a);             // 5
+println sum(a);             // 15
+println avg(a);             // 3
+println max(a);             // 5
+println min(a);             // 1
+println prod(a);            // 120
+println a[0];               // 1
+println a[4];               // 5
+
+a[2] = 30;
+print a; println "";        // 1 2 30 4 5
+println sum(a);             // 42
+println a[0] + a[4];        // 6
+
+b = [10, 20, 30];
+println sum(b) - sum(a);    // 18
+
+c = [];
+println len(c);             // 0
+println sum(c);             // 0
+
+d = [2.5, 2.5, 5];
+println avg(d);             // 3.3333333
+
+println a[1] * a[3];        // 8
+
+e = [1 + 1, 2 * 3, 4 - 1];
+print e; println "";        // 2 6 3
+println sum(e);             // 11
+
+// The 2-argument numeric max/min still work alongside array reductions.
+println max(3, 8);          // 8
+println min(3, 8);          // 3
+
+// len/sum/etc. remain usable as ordinary variable names.
+sum = 100;
+println sum + 1;            // 101

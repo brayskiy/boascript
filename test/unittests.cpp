@@ -314,6 +314,36 @@ static void testHypotUpperLower()
 }
 
 
+static void testArrays()
+{
+    eqNum("arr_len",  "a = [1, 2, 3, 4, 5]; println len(a);", 5);
+    eqNum("arr_sum",  "a = [1, 2, 3, 4, 5]; println sum(a);", 15);
+    eqNum("arr_avg",  "a = [1, 2, 3, 4, 5]; println avg(a);", 3);
+    eqNum("arr_prod", "a = [1, 2, 3, 4, 5]; println prod(a);", 120);
+    eqNum("arr_max",  "a = [1, 9, 3]; println max(a);", 9);
+    eqNum("arr_min",  "a = [4, 1, 3]; println min(a);", 1);
+    eqNum("arr_get0", "a = [10, 20, 30]; println a[0];", 10);
+    eqNum("arr_get2", "a = [10, 20, 30]; println a[2];", 30);
+    eqNum("arr_oob",  "a = [1, 2]; println a[9];", 0);          // out of range -> 0
+    eqNum("arr_set",  "a = [1, 2, 3]; a[1] = 99; println a[1];", 99);
+    eqNum("arr_expr_elems", "e = [1 + 1, 2 * 3, 4 - 1]; println sum(e);", 11);
+    eqNum("arr_empty_len",  "c = []; println len(c);", 0);
+    eqNum("arr_empty_sum",  "c = []; println sum(c);", 0);
+    eqNum("arr_empty_max",  "c = []; println max(c);", 0);
+    // Whole-array printing (space separated, BoaScript's fixed formatting).
+    eqStr("arr_print", "a = [1, 2, 3]; print a;",
+          "1.0000000 2.0000000 3.0000000");
+    // Multi-character array names.
+    eqNum("arr_named", "data = [2, 4, 6]; println sum(data);", 12);
+    // The 2-argument numeric max/min still work.
+    eqNum("num_max2", "println max(3, 8);", 8);
+    eqNum("num_min2", "println min(8, 3);", 3);
+    // Reduction words remain usable as ordinary variables.
+    eqNum("sum_as_var", "sum = 7; println sum + 1;", 8);
+    eqNum("len_as_var", "len = 5; println len * 2;", 10);
+}
+
+
 static void testLexer()
 {
     eqNum("sci_pos",   "println 1.5e3;", 1500);
@@ -398,6 +428,7 @@ int main()
     testIntgauss3();
     testNumberBases();
     testHypotUpperLower();
+    testArrays();
     testLexer();
     testApi();
 

@@ -422,6 +422,29 @@ TestCase testCase[] =
         assertEqualString
     },
 
+    // Arrays: reductions and element mutation.
+
+    {
+        4022,
+        "a = [1, 2, 3, 4, 5]; println sum(a);",
+        "15",
+        assertEqualDouble
+    },
+
+    {
+        4024,
+        "a = [1, 2, 3]; a[1] = 20; println a[0] + a[1] + a[2];",
+        "24",
+        assertEqualDouble
+    },
+
+    {
+        4026,
+        "a = [3, 1, 4, 1, 5]; println max(a) + min(a) + len(a);",
+        "11",
+        assertEqualDouble
+    },
+
 };
 
 

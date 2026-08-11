@@ -301,6 +301,35 @@
             func f(x) { return x * x; }
             println intgauss3(f, 0, 1);   // 0.3333333
 
+### 9b. Arrays.
+
+        An array is created with a bracketed list of expressions and lives
+        in its own namespace (so "sum", "len", etc. remain usable as
+        ordinary variables). Elements are read and written with a[i]
+        (out-of-range access reads 0 and is ignored on write). "print a"
+        prints the whole array, space separated.
+
+            a = [1, 2, 3, 4, 5];
+            a[2] = 30;
+            print a;              // 1 2 30 4 5
+
+        Reductions take an array name:
+
+            len(a)   - number of elements;
+            sum(a)   - sum of the elements;
+            avg(a)   - mean (0 for an empty array);
+            max(a)   - largest element;
+            min(a)   - smallest element;
+            prod(a)  - product of the elements;
+
+        Example:
+            a = [1, 2, 3, 4, 5];
+            println sum(a);       // 15
+            println avg(a);       // 3
+
+        Note that max/min with two numeric arguments remain the ordinary
+        two-argument builtins: max(3, 8) is 8.
+
 ### 10. Comments.
          Line or part of line will be ignored by the interpreter from double
          slash to the end of line.

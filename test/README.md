@@ -88,6 +88,7 @@ lines, 80% branches — are met (97.6% / 88.2%).
 | `intgauss3`  | the `intgauss3(f, a, b)` builtin: 3-point Gauss-Legendre integration of a named user function |
 | `bases`      | hexadecimal (`0x`), binary (`0b`), and octal (`0o`) integer literals |
 | `strfuncs`   | `upper`/`lower` string case conversion and the `hypot(x, y)` builtin |
+| `array`      | arrays: `[..]` literals, `a[i]` get/set, `len`/`sum`/`avg`/`max`/`min`/`prod` reductions, whole-array printing |
 
 ## Adding a golden-file case
 
