@@ -199,7 +199,7 @@ struct BoaReturn
 %token STRLEN SUBSTR REPLACE SUBSTITUTE TOSTR TONUM
 %token ABS ACOS ASIN ATAN ATAN2 CEIL COS COSH EXP FABS FLOOR FMOD
 %token FREXP LDEXP LOG LOG10 MODF POW SIN SINH SQRT CBRT TAN TANH
-%token MIN MAX RAND DATE MATCH PI
+%token MIN MAX RAND DATE MATCH PI HYPOT UPPER LOWER
 %token SETPREC GETPREC
 %token COMMENT EXIT
 %nonassoc IFX
@@ -368,6 +368,9 @@ expr:
                | FABS  '(' expr ')'     { $$ = opr(FABS, 1, $3);             }
                | FLOOR '(' expr ')'     { $$ = opr(FLOOR,1, $3);             }
                | FMOD  '(' expr ',' expr ')' { $$ = opr(FMOD, 2, $3, $5);    }
+               | HYPOT '(' expr ',' expr ')' { $$ = opr(HYPOT, 2, $3, $5);   }
+               | UPPER '(' expr ')'     { $$ = opr(UPPER, 1, $3);            }
+               | LOWER '(' expr ')'     { $$ = opr(LOWER, 1, $3);            }
                | FREXP '(' expr ',' expr ')' { $$ = opr(FREXP,2, $3, $5);    }
                | LDEXP '(' expr ',' expr ')' { $$ = opr(LDEXP,2, $3, $5);    }
                | LOG   '(' expr ')'     { $$ = opr(LOG , 1, $3);             }
@@ -833,6 +836,31 @@ Double ScanNum(void)
 }
 
 
+// Read an integer literal in the given base (2, 8 or 16), consuming digits
+// valid for that base. The "0x"/"0b"/"0o" prefix has already been read.
+long ScanBasedInt(int base)
+{
+    long value = 0;
+    for (;;)
+    {
+        int c = GetChar();
+        int digit;
+        if ((c >= '0') && (c <= '9'))      digit = c - '0';
+        else if ((c >= 'a') && (c <= 'f')) digit = c - 'a' + 10;
+        else if ((c >= 'A') && (c <= 'F')) digit = c - 'A' + 10;
+        else                               { UngetChar(c); break; }
+
+        if (digit >= base)
+        {
+            UngetChar(c);
+            break;
+        }
+        value = value * base + digit;
+    }
+    return value;
+}
+
+
 void UngetChar(int c)
 {
 #ifndef CALC_BATCH
@@ -899,8 +927,28 @@ int yylex(void)
     // Char starts a number => parse the number.
     if (cp == '.' || ::isdigit(cp))
     {
+        // A leading '0' may introduce a based integer literal:
+        // 0x.. (hex), 0b.. (binary), 0o.. (octal).
+        if (cp == '0')
+        {
+            int c2 = GetChar();
+            int base = 0;
+            if ((c2 == 'x') || (c2 == 'X')) base = 16;
+            else if ((c2 == 'b') || (c2 == 'B')) base = 2;
+            else if ((c2 == 'o') || (c2 == 'O')) base = 8;
+
+            if (base != 0)
+            {
+                yylval.Value.dbl  = (Double)ScanBasedInt(base);
+                yylval.Value.type = DataType::typeDbl;
+                return NUM;
+            }
+            UngetChar(c2);
+        }
+
         UngetChar(cp);
         yylval.Value.dbl = ScanNum();
+        yylval.Value.type = DataType::typeDbl;
 #ifdef CALC_DEBUG
         std::cout << yylval.Value.dbl << std::endl;
 #endif
@@ -1058,6 +1106,18 @@ int yylex(void)
             else if (strcmp(buf, "pow") == 0)
             {
                 return POW;
+            }
+            else if (strcmp(buf, "hypot") == 0)
+            {
+                return HYPOT;
+            }
+            else if (strcmp(buf, "upper") == 0)
+            {
+                return UPPER;
+            }
+            else if (strcmp(buf, "lower") == 0)
+            {
+                return LOWER;
             }
             else if (strcmp(buf, "sin") == 0)
             {
@@ -1977,6 +2037,11 @@ DataType ex(nodeType* p)
                                  (double)ex(p->u.opr.op[1]).dbl);
             return d;
 
+        case HYPOT:
+            d.dbl = (Double)hypot((double)ex(p->u.opr.op[0]).dbl,
+                                  (double)ex(p->u.opr.op[1]).dbl);
+            return d;
+
         case FREXP:
             {
                 double arg1 = (double)ex(p->u.opr.op[0]).dbl;
@@ -2058,11 +2123,28 @@ DataType ex(nodeType* p)
                 std::ostringstream os;
                 os << ex(p->u.opr.op[0]).dbl;
                 std::string out = os.str();
-                int len = (out.size() > MAX_STR_LEN) ? 
+                int len = (out.size() > MAX_STR_LEN) ?
                           MAX_STR_LEN : out.size();
                 d.type = DataType::typeStr;
                 memset(d.str, 0, MAX_STR_LEN + 1);
                 memmove(d.str, out.c_str(), len);
+            }
+            return d;
+
+        case UPPER:
+        case LOWER:
+            {
+                std::string s = std::string(ex(p->u.opr.op[0]).str);
+                for (size_t k = 0; k < s.size(); ++k)
+                {
+                    s[k] = (p->u.opr.oper == UPPER)
+                           ? (char)::toupper((unsigned char)s[k])
+                           : (char)::tolower((unsigned char)s[k]);
+                }
+                int len = (s.size() > MAX_STR_LEN) ? MAX_STR_LEN : s.size();
+                d.type = DataType::typeStr;
+                memset(d.str, 0, MAX_STR_LEN + 1);
+                memmove(d.str, s.c_str(), len);
             }
             return d;
 

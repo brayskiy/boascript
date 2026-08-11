@@ -1,0 +1,11 @@
+// Integer literals in several bases (values are ordinary numbers).
+println 0xFF;        // 255  hexadecimal
+println 0x10;        // 16
+println 0xff;        // 255  lowercase hex digits
+println 0b1010;      // 10   binary
+println 0b11111111;  // 255
+println 0o17;        // 15   octal
+println 0o777;       // 511
+println 0xFF + 1;    // 256  used in arithmetic
+println 0b100 * 0o10;// 32   (4 * 8)
+println 0;           // 0    a bare zero is still decimal

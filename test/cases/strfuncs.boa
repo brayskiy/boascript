@@ -1,0 +1,6 @@
+// String case conversion and hypotenuse builtin.
+println upper("hello world");     // HELLO WORLD
+println lower("Hello WORLD");     // hello world
+println upper("MixedCase 123");   // MIXEDCASE 123
+println hypot(3, 4);              // 5
+println hypot(5, 12);             // 13

@@ -399,6 +399,29 @@ TestCase testCase[] =
         assertEqualDouble
     },
 
+    // Number-base literals and hypot/upper/lower builtins.
+
+    {
+        4016,
+        "println 0xFF + 0b1010 + 0o17;",   // 255 + 10 + 15
+        "280",
+        assertEqualDouble
+    },
+
+    {
+        4018,
+        "println hypot(3, 4);",
+        "5",
+        assertEqualDouble
+    },
+
+    {
+        4020,
+        "print upper(\"boa\") + lower(\"SCRIPT\");",
+        "BOAscript",
+        assertEqualString
+    },
+
 };
 
 

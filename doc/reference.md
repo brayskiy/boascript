@@ -6,6 +6,9 @@
 ### 2. Data Types
         BoaScript is a dynamically typed language.
         There are two types in BoaScript: numerical (num) and string.
+
+        Numeric literals may be written in decimal (42, 3.14, 1.5e3) or, for
+        integers, in hexadecimal (0xFF), binary (0b1010), or octal (0o17).
         
 ### 3. Variables.
         Variables are places that store values. Boascript has 26 one-character
@@ -99,6 +102,7 @@
         modf(num, num)           -
         pow(num, num)            - power;
         num ^ num                - also power;
+        hypot(num, num)          - sqrt(x*x + y*y) without overflow;
         sin(num)                 -
         sinh(num)                -
         sqrt(num)                -
@@ -144,6 +148,13 @@
         Example:
             s = tostring(1234567);
             print s;
+
+        upper(string)            - returns the string in upper case;
+        lower(string)            - returns the string in lower case;
+
+        Example:
+            print upper("hello");   // HELLO
+            print lower("HELLO");   // hello
 
         date(string) - returns date or/and current time
         string       - format of output date.

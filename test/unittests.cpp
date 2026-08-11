@@ -285,6 +285,35 @@ static void testIntgauss3()
 }
 
 
+static void testNumberBases()
+{
+    eqNum("hex_FF",  "println 0xFF;", 255);
+    eqNum("hex_low", "println 0xff;", 255);
+    eqNum("hex_10",  "println 0x10;", 16);
+    eqNum("hex_0",   "println 0x0;", 0);
+    eqNum("bin",     "println 0b1010;", 10);
+    eqNum("bin_8",   "println 0b1000;", 8);
+    eqNum("oct",     "println 0o17;", 15);
+    eqNum("oct_777", "println 0o777;", 511);
+    eqNum("hex_arith", "println 0xFF + 1;", 256);
+    // A leading zero that is not a base prefix falls through to decimal.
+    eqNum("leading_zero", "println 08;", 8);
+    eqNum("plain_zero",   "println 0 + 5;", 5);
+}
+
+
+static void testHypotUpperLower()
+{
+    eqNum("hypot_345",  "println hypot(3, 4);", 5);
+    eqNum("hypot_512",  "println hypot(5, 12);", 13);
+    eqNum("hypot_zero", "println hypot(0, 0);", 0);
+    eqStr("upper",       "print upper(\"hello World\");", "HELLO WORLD");
+    eqStr("lower",       "print lower(\"Hello WORLD\");", "hello world");
+    eqStr("upper_digits","print upper(\"abc123\");", "ABC123");
+    eqStr("lower_empty", "print lower(\"\");", "");
+}
+
+
 static void testLexer()
 {
     eqNum("sci_pos",   "println 1.5e3;", 1500);
@@ -367,6 +396,8 @@ int main()
     testControl();
     testFunctions();
     testIntgauss3();
+    testNumberBases();
+    testHypotUpperLower();
     testLexer();
     testApi();
 

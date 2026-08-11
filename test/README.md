@@ -86,6 +86,8 @@ lines, 80% branches — are met (97.6% / 88.2%).
 | `caseof`     | `case (e) { when v: .. else: .. }` selection, block arms, `case` inside a function |
 | `gaussint`   | 3-point Gauss-Legendre integration written in BoaScript: a user function calling the integrand (another user function) |
 | `intgauss3`  | the `intgauss3(f, a, b)` builtin: 3-point Gauss-Legendre integration of a named user function |
+| `bases`      | hexadecimal (`0x`), binary (`0b`), and octal (`0o`) integer literals |
+| `strfuncs`   | `upper`/`lower` string case conversion and the `hypot(x, y)` builtin |
 
 ## Adding a golden-file case
 
