@@ -203,7 +203,7 @@ program:
                function                 { return 0;                          }
 
 function:
-               function stmt            { ex($2); freeNode($2);              }
+               function stmt            { ex($2);                            }
                | /* NULL */
                ;
 
@@ -334,6 +334,7 @@ nodeType* conD(DataType value)
     p->u.con.value.dbl  = value.dbl;
     p->u.con.value.type = DataType::typeDbl;
 
+    m_nodes.push_back(p);
     return p;
 }
 
@@ -352,10 +353,11 @@ nodeType* conS(DataType value)
     p->type = nodeType::typeCon;
     int len = (strlen(value.str) > MAX_STR_LEN) ? MAX_STR_LEN : 
                                                   strlen(value.str);
-    memset(p->u.con.value.str, 0, MAX_STR_LEN);
+    memset(p->u.con.value.str, 0, MAX_STR_LEN + 1);
     memmove(p->u.con.value.str, value.str, len);
     p->u.con.value.type =  DataType::typeStr;
 
+    m_nodes.push_back(p);
     return p;
 }
 
@@ -382,6 +384,7 @@ nodeType* getVar(std::string name)
 
     ::memmove(&p->u.con.value, &varStr[name], sizeof(DataType));
 
+    m_nodes.push_back(p);
     return p;
 }
 
@@ -393,7 +396,7 @@ nodeType* setVar(std::string name)
 #endif
     nodeType* p = 0;
     // Allocate node.
-    size_t nodeSize = SIZEOF_NODETYPE + sizeof(nodeType::idNodeType);
+    size_t nodeSize = SIZEOF_NODETYPE + sizeof(nodeType::varNodeType);
     if ((p = (nodeType *)malloc(nodeSize)) == 0)
     {
         yyerror("out of memory");
@@ -405,8 +408,9 @@ nodeType* setVar(std::string name)
     ::memmove(&p->u.var.name[0], name.c_str(), name.size());
 
 #ifdef VARSTR_DEBUG
-		std::cout << "setVar p->u.var.name = " << p->u.var.name << std::endl; 
+		std::cout << "setVar p->u.var.name = " << p->u.var.name << std::endl;
 #endif
+    m_nodes.push_back(p);
     return p;
 }
 
@@ -424,7 +428,8 @@ nodeType* id(int i)
     // copy information.
     p->type   = nodeType::typeId;
     p->u.id.i = i;
-    
+
+    m_nodes.push_back(p);
     return p;
 }
 
@@ -453,7 +458,8 @@ nodeType* opr(int oper, int nops, ...)
         p->u.opr.op[i] = va_arg(ap, nodeType*);
     }
     va_end(ap);
-    
+
+    m_nodes.push_back(p);
     return p;
 }
 
@@ -571,7 +577,15 @@ void Init(void)
     *yyssp    = yystate = 0;
 
     m_bufInd    = 0;
+    m_inLen     = 0;
     m_inBuf     = 0;
+
+    // Release any nodes left over from a previous parse (e.g. if Close()
+    // was not called after a syntax error).
+    FreeNodes();
+
+    // Clear any output left over from a previous Calc() on this object.
+    m_outBuf.clear();
 
     precision = 7;
 }
@@ -580,16 +594,24 @@ void Init(void)
 void Load(std::string in)
 {
     int len = in.size() + 1;
-    if (!m_inBuf)
+
+    // Always (re)allocate so the buffer matches the current input size;
+    // reusing an older, smaller buffer could overflow.
+    if (m_inBuf)
     {
-        m_inBuf = (char *)malloc(len);
+        free(m_inBuf);
+        m_inBuf = 0;
     }
+    m_inBuf = (char *)malloc(len);
 
     if (m_inBuf)
     {
         memset(m_inBuf, 0, len);
         memmove(m_inBuf, in.c_str(), len - 1);
     }
+
+    m_inLen  = in.size();
+    m_bufInd = 0;
 }
 
 
@@ -606,6 +628,19 @@ void Close(void)
         free(m_inBuf);
         m_inBuf = 0;
     }
+
+    FreeNodes();
+}
+
+
+// Release every AST node allocated during the last parse.
+void FreeNodes(void)
+{
+    for (size_t k = 0; k < m_nodes.size(); ++k)
+    {
+        free(m_nodes[k]);
+    }
+    m_nodes.clear();
 }
 
 
@@ -621,6 +656,13 @@ int GetChar(void)
 #ifndef CALC_BATCH
     return getchar();
 #else
+    // Do not read past the end of the input buffer. Return the
+    // end-of-input sentinel (0) once the terminator is reached and
+    // leave m_bufInd pointing at it so repeated calls stay in bounds.
+    if ((m_inBuf == 0) || (m_bufInd >= m_inLen))
+    {
+        return 0;
+    }
     return *(m_inBuf + m_bufInd++);
 #endif
 
@@ -658,7 +700,12 @@ void UngetChar(int c)
 #ifndef CALC_BATCH
     ungetc(c, stdin);
 #else
-    --m_bufInd;
+    // Ungetting the end-of-input sentinel is a no-op: GetChar() does not
+    // advance past the terminator, so there is nothing to put back.
+    if ((c != 0) && (c != EOF) && (m_bufInd > 0))
+    {
+        --m_bufInd;
+    }
 #endif // CALC_BATCH
 }
 
@@ -686,7 +733,7 @@ int yylex(void)
         }
     }
 
-    if (cp == EOF)
+    if ((cp == EOF) || (cp == 0))
     {
        	return 0;
     }
@@ -694,12 +741,15 @@ int yylex(void)
     // String section.
     if (cp == '"')
     {
-        memset(yylval.Value.str, 0, MAX_STR_LEN);
+        memset(yylval.Value.str, 0, MAX_STR_LEN + 1);
         int n = 0;
 
-        while ((cp = GetChar()) != '"')
+        while (((cp = GetChar()) != '"') && (cp != 0) && (cp != EOF))
         {
-            yylval.Value.str[n++] = cp;
+            if (n < MAX_STR_LEN)
+            {
+                yylval.Value.str[n++] = cp;
+            }
         }
 #ifdef CALC_DEBUG
         printf("%s\n", yylval.Value.str);
@@ -723,18 +773,24 @@ int yylex(void)
     if (::isalpha(cp))
     {
         char buf[SMALL_BUF_LEN + 1];
-        memset(buf, 0, SMALL_BUF_LEN);
+        memset(buf, 0, SMALL_BUF_LEN + 1);
         int n = 0;
 	    int i = 0;
-        while (cp != EOF && (::isalpha(cp) || ::isdigit(cp)))
+        while ((cp != EOF) && (cp != 0) && (::isalpha(cp) || ::isdigit(cp)))
 	    {
-            buf[n++] = cp;
+            if (n < SMALL_BUF_LEN)
+            {
+                buf[n++] = cp;
+            }
             ++i;
             cp = GetChar();
         }
         UngetChar(cp);
 
-        if (i == 1)
+        // Single-letter variables map to sym[buf[0] - 'a']; only 'a'..'z'
+        // are valid indices, so reject anything else instead of indexing
+        // out of bounds.
+        if ((i == 1) && (buf[0] >= 'a') && (buf[0] <= 'z'))
         {
              yylval.sIndex = buf[0] - 'a';
             
@@ -1073,6 +1129,7 @@ DataType ex(nodeType* p)
 #else
                     std::ostringstream oss(std::ostringstream::out);
                     oss << std::fixed;
+                    if (precision <= 0) precision = 7;
                     oss << std::setprecision(precision);
                     oss << tmp.dbl;
                     if (p->u.opr.oper == PRINTLN)
@@ -1170,7 +1227,7 @@ DataType ex(nodeType* p)
                     // default, please mention it.
                     d.type = DataType::typeStr;
                     // Copy data.
-                    memset(d.str, 0, MAX_STR_LEN);
+                    memset(d.str, 0, MAX_STR_LEN + 1);
                     memmove(d.str, str.c_str(), len);
                 }
             }
@@ -1251,7 +1308,7 @@ DataType ex(nodeType* p)
                 DataType op1 = ex(p->u.opr.op[1]);
                 if (op1.dbl)
                 {
-                    d.dbl = (Double)((int)op0.dbl / (int)op1.dbl);
+                    d.dbl = (Double)((int)op0.dbl % (int)op1.dbl);
                 }
                 else
                 {
@@ -1592,19 +1649,8 @@ DataType ex(nodeType* p)
             d.dbl = (Double)sqrt((double)ex(p->u.opr.op[0]).dbl);
             return d;
                 
-        // This is not exact solution for the cube root.
-        // But very fast and good for approximations.
-        // Experimental.
         case CBRT:
-            {
-                Double arg = (Double)ex(p->u.opr.op[0]).dbl;
-                const unsigned int B1 = 715094163; 
-                Double t = (Double)0; 
-                unsigned int* pt = (unsigned int *)&t; 
-                unsigned int* px = (unsigned int *)&arg;
-                pt[isLittleEndian()] = px[isLittleEndian()] / 3 + B1; 
-                d.dbl = t;
-            }
+            d.dbl = (Double)cbrt((double)ex(p->u.opr.op[0]).dbl);
             return d;
 
         case TAN:
@@ -1640,7 +1686,7 @@ DataType ex(nodeType* p)
                 int len = (out.size() > MAX_STR_LEN) ? 
                           MAX_STR_LEN : out.size();
                 d.type = DataType::typeStr;
-                memset(d.str, 0, MAX_STR_LEN);
+                memset(d.str, 0, MAX_STR_LEN + 1);
                 memmove(d.str, out.c_str(), len);
             }
             return d;
@@ -1671,7 +1717,7 @@ DataType ex(nodeType* p)
                 int len = (out.size() > MAX_STR_LEN) ? 
                           MAX_STR_LEN : out.size();
                 d.type = DataType::typeStr;
-                memset(d.str, 0, MAX_STR_LEN);
+                memset(d.str, 0, MAX_STR_LEN + 1);
                 memmove(d.str, out.c_str(), len);
             }
             return d;
@@ -1693,7 +1739,7 @@ DataType ex(nodeType* p)
                     // default, please mention it.
                     d.type = DataType::typeStr;
                     // Copy data.
-                    memset(d.str, 0, MAX_STR_LEN);
+                    memset(d.str, 0, MAX_STR_LEN + 1);
                     memmove(d.str, out.c_str(), len);
                 }
             }
@@ -1711,7 +1757,7 @@ DataType ex(nodeType* p)
                 // Copy data.
                 int len = (s0.size() > MAX_STR_LEN) ? MAX_STR_LEN : s0.size();
                 d.type  = DataType::typeStr;
-                memset(d.str, 0, MAX_STR_LEN);
+                memset(d.str, 0, MAX_STR_LEN + 1);
                 memmove(d.str, s0.c_str(), len);
             }
             return d;
@@ -1732,7 +1778,7 @@ DataType ex(nodeType* p)
                 int len = (outstr.size() > MAX_STR_LEN) ? 
                           MAX_STR_LEN : outstr.size();
                 d.type  = DataType::typeStr;
-                memset(d.str, 0, MAX_STR_LEN);
+                memset(d.str, 0, MAX_STR_LEN + 1);
                 memmove(d.str, outstr.c_str(), len);
             }
             return d;
@@ -1756,7 +1802,7 @@ DataType ex(nodeType* p)
                             int len = (strlen(op1.str) > MAX_STR_LEN) ? 
                                       MAX_STR_LEN : strlen(op1.str);
                             d.type  = DataType::typeStr;
-                            memset(d.str, 0, MAX_STR_LEN);
+                            memset(d.str, 0, MAX_STR_LEN + 1);
                             memmove(d.str, op1.str, len);
                         }
                     }
@@ -1771,7 +1817,7 @@ DataType ex(nodeType* p)
                             int len = (strlen(op2.str) > MAX_STR_LEN) ? 
                                        MAX_STR_LEN : strlen(op2.str);
                             d.type  = DataType::typeStr;
-                            memset(d.str, 0, MAX_STR_LEN);
+                            memset(d.str, 0, MAX_STR_LEN + 1);
                             memmove(d.str, op2.str, len);
                         }
                     }
@@ -1800,9 +1846,15 @@ private:
     DataType                        sym['z' - 'a' + 1];
     std::map<std::string, DataType> varStr;
 
+    // Every AST node allocated during a parse is registered here so it
+    // can be released in Close(), including nodes left dangling when a
+    // parse aborts on a syntax error.
+    std::vector<nodeType*>          m_nodes;
+
 #ifdef CALC_BATCH
 
     int   m_bufInd;
+    int   m_inLen;
     char* m_inBuf;
     Cell  m_outBuf;
 
