@@ -1,4 +1,9 @@
 testboascript
 driver
+unittests
 build
+coverage
 *.o
+*.gcov
+*.gcno
+*.gcda

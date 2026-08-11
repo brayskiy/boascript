@@ -452,33 +452,6 @@ nodeType* conS(DataType value)
 }
 
 
-nodeType* getVar(std::string name)
-{
-#ifdef VARSTR_DEBUG
-        std::cout << "getVar name = " << name << std::endl; 
-#endif
-    nodeType* p = 0;
-    // Allocate node.
-    size_t nodeSize = SIZEOF_NODETYPE + sizeof(nodeType::conNodeType);
-    if ((p = (nodeType *)malloc(nodeSize)) == 0)
-    {
-        yyerror("out of memory");
-    }
-
-    p->type = nodeType::typeVarCon;
-
-    if (varStr.find(name) == varStr.end())
-    {
-        varStr[name] = DataType();
-    }
-
-    ::memmove(&p->u.con.value, &varStr[name], sizeof(DataType));
-
-    m_nodes.push_back(p);
-    return p;
-}
-
-
 nodeType* setVar(std::string name)
 {
 #ifdef VARSTR_DEBUG
@@ -631,21 +604,6 @@ nodeType* caseStmt(nodeType* sw, std::vector<nodeType*>* arms)
     delete arms;
     m_nodes.push_back(p);
     return p;
-}
-
-
-void freeNode(nodeType* p)
-{
-    if (!p) return;
-
-    if (p->type == nodeType::typeOpr)
-    {
-        for (int i = 0; i < p->u.opr.nops; i++)
-        {
-            freeNode(p->u.opr.op[i]);
-        }
-    }
-    free(p);
 }
 
 
@@ -1236,24 +1194,6 @@ int yylex(void)
 //******************************************************************************
 //******************************** Interpreter *********************************
 //******************************************************************************
-
-
-int isLittleEndian(void)
-{
-    union Endian
-    {
-        unsigned char a[4];
-        unsigned int  b;
-    } endian;
-
-    endian.b = 0x01020304;
-
-    if (endian.a[0] < endian.a[3])
-    {
-        return 0;
-    }
-    return 1;
-}
 
 
 // The name of a variable lvalue, regardless of its representation: named

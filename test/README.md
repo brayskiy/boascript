@@ -1,6 +1,6 @@
 # BoaScript test suite
 
-Two complementary test suites, modeled on the ooyacc project's harness.
+Three complementary test suites, modeled on the ooyacc project's harness.
 
 ## 1. Embedded assertion suite — `testboascript`
 
@@ -9,7 +9,15 @@ cases run directly against `Boascript::Calc`. Comparators are exact-string,
 substring, and numeric (parse-and-compare) matches. Good for precise,
 self-contained assertions.
 
-## 2. Golden-file suite — `driver` + `cases/`
+## 2. Unit tests — `unittests`
+
+`unittests.cpp` is a self-contained (no-framework) unit-test program that
+exercises the interpreter API and every language construct, builtin,
+operator (numeric and string operands), error path, and the `Calc()`
+overloads / `Init`-`Load`-`GetRes`-`Close` sequence. It exists chiefly to
+drive coverage; see below.
+
+## 3. Golden-file suite — `driver` + `cases/`
 
 Modeled on the ooyacc suite: a generic `driver` runs a BoaScript program
 and prints the interpreter's output; `run_tests.sh` diffs that output
@@ -29,15 +37,35 @@ test/
 
 ```sh
 make            # from the repo root: build the library (needs ooyacc)
-make test       # build + run both suites
+make test       # build + run all three suites
 ```
 
 or, from this directory once the library exists in `../distribution`:
 
 ```sh
-make check      # both suites
+make check      # all three suites
+./unittests         # unit tests only
 bash run_tests.sh   # golden-file suite only
 ```
+
+## Coverage
+
+`make coverage` (or `bash coverage.sh`) rebuilds the interpreter with gcov
+instrumentation, runs every suite, and reports line and branch coverage of
+`src/Boascript.y`:
+
+```
+Lines executed:97.56% of 984
+Branches (raw, incl. exception edges): 67.31% of 1135
+Branches (excl. exception edges):      88.24% of 859
+```
+
+Branch coverage is reported two ways. gcov counts every implicit
+exception-cleanup edge (`(throw)` in its annotations) as a branch; those are
+compiler-generated, not program logic, and standard tools (lcov's
+`geninfo_no_exception_branches`) exclude them by default. The
+"excl. exception edges" figure is the meaningful one. The targets — 90%
+lines, 80% branches — are met (97.6% / 88.2%).
 
 ## Cases and what they cover
 
