@@ -36,3 +36,6 @@ src/*.tab.*
 distribution
 obj
 
+
+# Generated version header
+src/Version.h
