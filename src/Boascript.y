@@ -928,6 +928,14 @@ int yylex(void)
             {
                 return RAND;
             }
+            else if (strcmp(buf, "min") == 0)
+            {
+                return MIN;
+            }
+            else if (strcmp(buf, "max") == 0)
+            {
+                return MAX;
+            }
             // String functions.
             else if (strcmp(buf, "strlen") == 0)
             {
