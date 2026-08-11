@@ -353,9 +353,32 @@ static void testArrays()
     eqNum("arr_empty_len",  "c = []; println len(c);", 0);
     eqNum("arr_empty_sum",  "c = []; println sum(c);", 0);
     eqNum("arr_empty_max",  "c = []; println max(c);", 0);
-    // Whole-array printing (space separated, BoaScript's fixed formatting).
-    eqStr("arr_print", "a = [1, 2, 3]; print a;",
-          "1.0000000 2.0000000 3.0000000");
+    // Whole-array printing uses the nested bracket form.
+    eqStr("arr_print",  "a = [1, 2, 3]; print a;", "[1, 2, 3]");
+    // Multi-dimensional arrays.
+    eqStr("arr_2d_print", "m = [[1, 2], [3, 4]]; print m;", "[[1, 2], [3, 4]]");
+    eqNum("arr_2d_get",   "m = [[1, 2, 3], [4, 5, 6]]; println m[1][2];", 6);
+    eqNum("arr_2d_len",   "m = [[1, 2, 3], [4, 5, 6]]; println len(m);", 2);
+    eqNum("arr_2d_leninner","m = [[1, 2, 3], [4, 5, 6]]; println len(m[0]);", 3);
+    eqNum("arr_2d_sum",   "m = [[1, 2, 3], [4, 5, 6]]; println sum(m);", 21);
+    eqNum("arr_2d_set",   "m = [[1, 2], [3, 4]]; m[1][0] = 30; println m[1][0];", 30);
+    eqNum("arr_3d_get",   "c = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]; println c[1][0][1];", 6);
+    eqNum("arr_3d_sum",   "c = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]; println sum(c);", 36);
+    eqNum("arr_expr_nest","n = [[1 + 1, 2 * 2], [3 * 3, 4 + 4]]; println sum(n);", 23);
+    // Nested reductions fold over all leaves; len is the outer dimension.
+    eqNum("arr_2d_prod",  "m = [[1, 2], [3, 4]]; println prod(m);", 24);
+    eqNum("arr_2d_avg",   "m = [[1, 2], [3, 4]]; println avg(m);", 2.5);
+    eqNum("arr_2d_max",   "m = [[1, 9], [3, 4]]; println max(m);", 9);
+    eqNum("arr_2d_min",   "m = [[5, 2], [3, 4]]; println min(m);", 2);
+    // Extracting a sub-array into a variable.
+    eqNum("arr_subarray", "m = [[1, 2, 3], [4, 5, 6]]; r = m[1]; println sum(r);", 15);
+    eqStr("arr_sub_print","m = [[1, 2, 3], [4, 5, 6]]; r = m[0]; print r;", "[1, 2, 3]");
+    // Copying an array by name.
+    eqNum("arr_copy",     "a = [1, 2, 3]; b = a; b[0] = 9; println sum(a) + sum(b);", 6 + 14);
+    // Reassigning an array name to a scalar sheds the array binding.
+    eqNum("arr_to_scalar","a = [1, 2, 3]; a = 5; println a + 1;", 6);
+    // Out-of-range element assignment is ignored.
+    eqNum("arr_set_oob",  "a = [1, 2, 3]; a[9] = 100; println sum(a);", 6);
     // Multi-character array names.
     eqNum("arr_named", "data = [2, 4, 6]; println sum(data);", 12);
     // The 2-argument numeric max/min still work.

@@ -159,6 +159,19 @@ struct nodeType
 };
 
 
+// A recursive array value: either a scalar number or a vector of nested
+// values. This is what named arrays store, so arrays may be multi-
+// dimensional (arrays of arrays).
+struct ArrayVal
+{
+    bool                  isScalar;
+    Double                num;
+    std::vector<ArrayVal> arr;
+
+    ArrayVal() : isScalar(true), num(0) {}
+};
+
+
 // A user-defined function: its parameter names and its body AST. The body
 // node is owned by the parse arena (freed in Close()); the parameter names
 // are kept here because AST nodes cannot hold C++ containers.
@@ -197,7 +210,7 @@ struct BoaReturn
 %token FUNC RETURN UCALL
 %token CASE WHEN
 %token INTGAUSS3
-%token ARRAY_MAKE ARRAY_GET ARRAY_SET ARRAY_MAX ARRAY_MIN
+%token ARRAY_LIT ARRAY_GET ARRAY_SET ARRAY_MAX ARRAY_MIN
 %token STRLEN SUBSTR REPLACE SUBSTITUTE TOSTR TONUM
 %token ABS ACOS ASIN ATAN ATAN2 CEIL COS COSH EXP FABS FLOOR FMOD
 %token FREXP LDEXP LOG LOG10 MODF POW SIN SINH SQRT CBRT TAN TANH
@@ -223,7 +236,7 @@ struct BoaReturn
 
 %type <nPtr>  stmt expr stmt_list funcdef for_init
 %type <sList> params paramlist
-%type <nList> args arglist arms elems elemlist
+%type <nList> args arglist arms elems elemlist indices
 
 %%
 
@@ -244,14 +257,10 @@ stmt:
                | VARIABLE '=' expr      { $$ = opr('=', 2, id($1), $3);      }
                | VARSTR '=' expr        { $$ = opr('=', 2, setVar($1), $3);  }
                | VARSTR '~' expr        { $$ = opr('~', 2, setVar($1), $3);  }
-               | VARIABLE '=' '[' elems ']'
-                     { $$ = arrayMake(varOf($1), $4);                        }
-               | VARSTR '=' '[' elems ']'
-                     { $$ = arrayMake(std::string($1), $4);                  }
-               | VARIABLE '[' expr ']' '=' expr
-                     { $$ = opr(ARRAY_SET, 3, setVar(varOf($1)), $3, $6);    }
-               | VARSTR '[' expr ']' '=' expr
-                     { $$ = opr(ARRAY_SET, 3, setVar(std::string($1)), $3, $6); }
+               | VARIABLE indices '=' expr
+                     { $$ = arraySet(varOf($1), $2, $4);                     }
+               | VARSTR indices '=' expr
+                     { $$ = arraySet(std::string($1), $2, $4);               }
                | WHILE '(' expr ')' stmt   { $$ = opr(WHILE, 2, $3, $5);     }
                | FOR '(' for_init ';' expr ';' for_init ')' stmt
                                         { $$ = opr(FOR, 4, $3, $5, $7, $9);  }
@@ -329,6 +338,13 @@ elemlist:
                | elemlist ',' expr      { $1->push_back($3); $$ = $1;        }
                ;
 
+// An index chain: [i], [i][j], [i][j][k], ...
+indices:
+               '[' expr ']'             { $$ = new std::vector<nodeType*>();
+                                          $$->push_back($2);                 }
+               | indices '[' expr ']'   { $1->push_back($3); $$ = $1;        }
+               ;
+
 // The arms of a case statement, flattened into (value, body) pairs. The
 // default arm ("else:") is stored with a null value.
 arms:
@@ -348,12 +364,11 @@ expr:
                | VARSTR                 { $$ = setVar($1);                   }
                | VARSTR '(' args ')'    { $$ = callFunc(std::string($1), $3);}
                | VARIABLE '(' args ')'  { $$ = callFunc(varOf($1), $3);      }
-               | VARIABLE '[' expr ']'  { $$ = opr(ARRAY_GET, 2, setVar(varOf($1)), $3);      }
-               | VARSTR '[' expr ']'    { $$ = opr(ARRAY_GET, 2, setVar(std::string($1)), $3);}
-               | MAX  '(' VARIABLE ')'  { $$ = opr(ARRAY_MAX, 1, setVar(varOf($3)));      }
-               | MAX  '(' VARSTR ')'    { $$ = opr(ARRAY_MAX, 1, setVar(std::string($3))); }
-               | MIN  '(' VARIABLE ')'  { $$ = opr(ARRAY_MIN, 1, setVar(varOf($3)));      }
-               | MIN  '(' VARSTR ')'    { $$ = opr(ARRAY_MIN, 1, setVar(std::string($3))); }
+               | '[' elems ']'          { $$ = arrayLit($2);                }
+               | VARIABLE indices       { $$ = arrayGet(varOf($1), $2);     }
+               | VARSTR indices         { $$ = arrayGet(std::string($1), $2); }
+               | MAX  '(' expr ')'      { $$ = opr(ARRAY_MAX, 1, $3);       }
+               | MIN  '(' expr ')'      { $$ = opr(ARRAY_MIN, 1, $3);       }
                | INTGAUSS3 '(' VARSTR ',' expr ',' expr ')'
                      { $$ = opr(INTGAUSS3, 3, setVar(std::string($3)), $5, $7); }
                | INTGAUSS3 '(' VARIABLE ',' expr ',' expr ')'
@@ -648,32 +663,59 @@ nodeType* caseStmt(nodeType* sw, std::vector<nodeType*>* arms)
 }
 
 
-// Build an array-literal node: op[0] carries the target array name, op[1..]
-// the element expressions. The element list is consumed.
-nodeType* arrayMake(std::string name, std::vector<nodeType*>* elems)
+// Build an operator node whose operands are taken from a vector (which is
+// consumed), optionally preceded by a single leading operand. Used for the
+// variable-arity array nodes.
+nodeType* oprVec(int oper, nodeType* lead, std::vector<nodeType*>* items)
 {
-    int nops = 1 + (int)elems->size();
+    int extra = (lead != 0) ? 1 : 0;
+    int nops  = extra + (int)items->size();
 
     nodeType* p = 0;
     size_t nodeSize = SIZEOF_NODETYPE + sizeof(nodeType::oprNodeType) +
-                      (nops - 1) * sizeof(nodeType*);
+                      ((nops > 0 ? nops : 1) - 1) * sizeof(nodeType*);
     if ((p = (nodeType *)malloc(nodeSize)) == 0)
     {
         yyerror("out of memory");
     }
 
-    p->type        = nodeType::typeOpr;
-    p->u.opr.oper  = ARRAY_MAKE;
-    p->u.opr.nops  = nops;
-    p->u.opr.op[0] = setVar(name);
-    for (int i = 0; i < (int)elems->size(); ++i)
+    p->type       = nodeType::typeOpr;
+    p->u.opr.oper = oper;
+    p->u.opr.nops = nops;
+    if (lead)
     {
-        p->u.opr.op[i + 1] = (*elems)[i];
+        p->u.opr.op[0] = lead;
+    }
+    for (int i = 0; i < (int)items->size(); ++i)
+    {
+        p->u.opr.op[extra + i] = (*items)[i];
     }
 
-    delete elems;
+    delete items;
     m_nodes.push_back(p);
     return p;
+}
+
+
+// An (anonymous) array literal: op[0..] are the element expressions.
+nodeType* arrayLit(std::vector<nodeType*>* elems)
+{
+    return oprVec(ARRAY_LIT, 0, elems);
+}
+
+
+// Array element access: op[0] is the array name, op[1..] the index chain.
+nodeType* arrayGet(std::string name, std::vector<nodeType*>* idx)
+{
+    return oprVec(ARRAY_GET, setVar(name), idx);
+}
+
+
+// Array element assignment: op[0] name, op[1] value, op[2..] the index chain.
+nodeType* arraySet(std::string name, std::vector<nodeType*>* idx, nodeType* val)
+{
+    idx->insert(idx->begin(), val);
+    return oprVec(ARRAY_SET, setVar(name), idx);
 }
 
 
@@ -1360,14 +1402,22 @@ std::string nameOfVar(nodeType* v)
 // local frame is used; at top level the globals (sym[] / varStr) are used.
 DataType ReadVar(nodeType* v)
 {
+    DataType d;
+    d.type = DataType::typeDbl;
+    d.dbl  = (Double)0;
+
+    // A name bound to an array reads as 0 in scalar context.
+    std::map<std::string, ArrayVal>::iterator ai = arrays.find(nameOfVar(v));
+    if (ai != arrays.end())
+    {
+        d.dbl = numOf(ai->second);
+        return d;
+    }
+
     if (!m_scopes.empty())
     {
         return m_scopes.back()[nameOfVar(v)];
     }
-
-    DataType d;
-    d.type = DataType::typeDbl;
-    d.dbl  = (Double)0;
 
     if (v->type == nodeType::typeVar)
     {
@@ -1412,45 +1462,33 @@ DataType Assign(nodeType* lval, const DataType& val)
 // Array reductions len/sum/avg/prod are dispatched by name at call time
 // (rather than reserved as keywords, so those words remain usable as
 // ordinary variables). Returns true and fills 'out' when fname is a
-// reduction and 'arg' is a bare variable naming a defined array.
+// reduction and 'arg' denotes an array value. len() is the outermost
+// dimension; sum/avg/prod fold over every scalar leaf recursively.
 bool tryArrayReduce(const std::string& fname, nodeType* arg, DataType& out)
 {
-    if (!arg ||
-        ((arg->type != nodeType::typeId) && (arg->type != nodeType::typeVar)))
+    if (!isArrayNode(arg))
     {
         return false;
     }
-
-    std::map<std::string, std::vector<Double> >::iterator it =
-        arrays.find(nameOfVar(arg));
-    if (it == arrays.end())
-    {
-        return false;
-    }
-    std::vector<Double>& v = it->second;
+    ArrayVal v = evalArr(arg);
 
     out.type = DataType::typeDbl;
     if (fname == "len")
     {
-        out.dbl = (Double)v.size();
+        out.dbl = v.isScalar ? (Double)1 : (Double)v.arr.size();
     }
     else if (fname == "sum")
     {
-        Double s = 0;
-        for (size_t k = 0; k < v.size(); ++k) s += v[k];
-        out.dbl = s;
+        out.dbl = sumVal(v);
     }
     else if (fname == "avg")
     {
-        Double s = 0;
-        for (size_t k = 0; k < v.size(); ++k) s += v[k];
-        out.dbl = v.empty() ? (Double)0 : s / (Double)v.size();
+        int c = countLeaves(v);
+        out.dbl = (c == 0) ? (Double)0 : sumVal(v) / (Double)c;
     }
     else if (fname == "prod")
     {
-        Double pr = 1;
-        for (size_t k = 0; k < v.size(); ++k) pr *= v[k];
-        out.dbl = pr;
+        out.dbl = prodVal(v);
     }
     else
     {
@@ -1532,6 +1570,147 @@ std::string asStr(const DataType& v)
     std::ostringstream os;
     os << v.dbl;
     return os.str();
+}
+
+
+// ---- Array value helpers -------------------------------------------------
+
+// Scalar value of an array value (0 for a non-scalar array).
+Double numOf(const ArrayVal& v) { return v.isScalar ? v.num : (Double)0; }
+
+// Recursive sum of every scalar leaf.
+Double sumVal(const ArrayVal& v)
+{
+    if (v.isScalar) return v.num;
+    Double s = 0;
+    for (size_t i = 0; i < v.arr.size(); ++i) s += sumVal(v.arr[i]);
+    return s;
+}
+
+// Recursive product of every scalar leaf.
+Double prodVal(const ArrayVal& v)
+{
+    if (v.isScalar) return v.num;
+    Double p = 1;
+    for (size_t i = 0; i < v.arr.size(); ++i) p *= prodVal(v.arr[i]);
+    return p;
+}
+
+// Number of scalar leaves (for avg).
+int countLeaves(const ArrayVal& v)
+{
+    if (v.isScalar) return 1;
+    int c = 0;
+    for (size_t i = 0; i < v.arr.size(); ++i) c += countLeaves(v.arr[i]);
+    return c;
+}
+
+// Collect every scalar leaf (for max/min).
+void flattenLeaves(const ArrayVal& v, std::vector<Double>& out)
+{
+    if (v.isScalar) { out.push_back(v.num); return; }
+    for (size_t i = 0; i < v.arr.size(); ++i) flattenLeaves(v.arr[i], out);
+}
+
+// Nested, bracketed rendering: [[1, 2, 3], [4, 5, 6]].
+void printArray(const ArrayVal& v, std::ostringstream& os)
+{
+    if (v.isScalar) { os << v.num; return; }
+    os << "[";
+    for (size_t i = 0; i < v.arr.size(); ++i)
+    {
+        if (i) os << ", ";
+        printArray(v.arr[i], os);
+    }
+    os << "]";
+}
+
+// True when a node denotes an array value: an array literal, an element
+// access, or a bare variable that names a defined array.
+bool isArrayNode(nodeType* p)
+{
+    if (!p) return false;
+    if ((p->type == nodeType::typeOpr) &&
+        ((p->u.opr.oper == ARRAY_LIT) || (p->u.opr.oper == ARRAY_GET)))
+    {
+        return true;
+    }
+    if (((p->type == nodeType::typeId) || (p->type == nodeType::typeVar)) &&
+        (arrays.find(nameOfVar(p)) != arrays.end()))
+    {
+        return true;
+    }
+    return false;
+}
+
+// Navigate an ARRAY_GET node (op[0] name, op[1..] index chain) and return the
+// value found there (scalar 0 if out of range or over-indexed).
+ArrayVal getElem(nodeType* p)
+{
+    ArrayVal zero;
+    std::map<std::string, ArrayVal>::iterator it =
+        arrays.find(p->u.opr.op[0]->u.var.name);
+    if (it == arrays.end()) return zero;
+
+    ArrayVal* cur = &it->second;
+    for (int k = 1; k < p->u.opr.nops; ++k)
+    {
+        int i = (int)ex(p->u.opr.op[k]).dbl;
+        if (cur->isScalar || i < 0 || i >= (int)cur->arr.size()) return zero;
+        cur = &cur->arr[i];
+    }
+    return *cur;
+}
+
+// Assign into an ARRAY_SET node (op[0] name, op[1] value, op[2..] index chain).
+void setElem(nodeType* p)
+{
+    ArrayVal val = evalArr(p->u.opr.op[1]);
+    ArrayVal* cur = &arrays[p->u.opr.op[0]->u.var.name];
+    for (int k = 2; k < p->u.opr.nops; ++k)
+    {
+        int i = (int)ex(p->u.opr.op[k]).dbl;
+        if (cur->isScalar || i < 0 || i >= (int)cur->arr.size()) return;
+        cur = &cur->arr[i];
+    }
+    *cur = val;
+}
+
+// Evaluate a node to an array value: array literals build a nested value,
+// element accesses navigate, bare array names return the stored value, and
+// anything else is wrapped as a scalar.
+ArrayVal evalArr(nodeType* p)
+{
+    ArrayVal v;
+    if (!p) return v;
+
+    if (p->type == nodeType::typeOpr)
+    {
+        if (p->u.opr.oper == ARRAY_LIT)
+        {
+            v.isScalar = false;
+            for (int k = 0; k < p->u.opr.nops; ++k)
+            {
+                v.arr.push_back(evalArr(p->u.opr.op[k]));
+            }
+            return v;
+        }
+        if (p->u.opr.oper == ARRAY_GET)
+        {
+            return getElem(p);
+        }
+    }
+
+    if ((p->type == nodeType::typeId) || (p->type == nodeType::typeVar))
+    {
+        std::map<std::string, ArrayVal>::iterator it =
+            arrays.find(nameOfVar(p));
+        if (it != arrays.end()) return it->second;
+    }
+
+    v.isScalar = true;
+    v.num      = (Double)ex(p).dbl;
+    return v;
 }
 
 
@@ -1707,51 +1886,35 @@ DataType ex(nodeType* p)
 
         // Arrays. op[0] of every array node carries the array name.
 
-        case ARRAY_MAKE:
-            {
-                std::vector<Double> v;
-                for (int k = 1; k < p->u.opr.nops; ++k)
-                {
-                    v.push_back((Double)ex(p->u.opr.op[k]).dbl);
-                }
-                arrays[p->u.opr.op[0]->u.var.name] = v;
-            }
+        case ARRAY_LIT:
+            // An array literal in scalar context is 0 (see numOf); it is
+            // realized as a value by evalArr where an array is expected.
             return d;
 
         case ARRAY_GET:
-            {
-                std::vector<Double>& v = arrays[p->u.opr.op[0]->u.var.name];
-                int i = (int)ex(p->u.opr.op[1]).dbl;
-                d.dbl = (i >= 0 && i < (int)v.size()) ? v[i] : (Double)0;
-            }
+            // Element access in scalar context yields the scalar found there
+            // (0 if it lands on a sub-array or out of range).
+            d.dbl = numOf(getElem(p));
             return d;
 
         case ARRAY_SET:
-            {
-                std::vector<Double>& v = arrays[p->u.opr.op[0]->u.var.name];
-                int i = (int)ex(p->u.opr.op[1]).dbl;
-                Double val = (Double)ex(p->u.opr.op[2]).dbl;
-                if (i >= 0 && i < (int)v.size())
-                {
-                    v[i] = val;
-                }
-            }
+            setElem(p);
             return d;
 
         case ARRAY_MAX:
-            {
-                std::vector<Double>& v = arrays[p->u.opr.op[0]->u.var.name];
-                Double m = v.empty() ? (Double)0 : v[0];
-                for (size_t k = 0; k < v.size(); ++k) if (v[k] > m) m = v[k];
-                d.dbl = m;
-            }
-            return d;
-
         case ARRAY_MIN:
             {
-                std::vector<Double>& v = arrays[p->u.opr.op[0]->u.var.name];
-                Double m = v.empty() ? (Double)0 : v[0];
-                for (size_t k = 0; k < v.size(); ++k) if (v[k] < m) m = v[k];
+                std::vector<Double> leaves;
+                flattenLeaves(evalArr(p->u.opr.op[0]), leaves);
+                Double m = leaves.empty() ? (Double)0 : leaves[0];
+                for (size_t k = 0; k < leaves.size(); ++k)
+                {
+                    if ((p->u.opr.oper == ARRAY_MAX) ? (leaves[k] > m)
+                                                     : (leaves[k] < m))
+                    {
+                        m = leaves[k];
+                    }
+                }
                 d.dbl = m;
             }
             return d;
@@ -1772,29 +1935,23 @@ DataType ex(nodeType* p)
         case PRINT:
         case PRINTLN:
             {
-                // If the operand is a bare variable naming a defined array,
-                // print the whole array (space-separated) instead of a scalar.
+                // If the operand denotes an array value, print it in nested
+                // bracket form ([[1, 2], [3, 4]]) instead of as a scalar.
                 nodeType* arg = p->u.opr.op[0];
-                if (arg &&
-                    ((arg->type == nodeType::typeVar) ||
-                     (arg->type == nodeType::typeId)) &&
-                    (arrays.find(nameOfVar(arg)) != arrays.end()))
+                if (isArrayNode(arg))
                 {
-                    std::vector<Double>& v = arrays[nameOfVar(arg)];
-                    std::ostringstream oss(std::ostringstream::out);
-                    oss << std::fixed << std::setprecision(precision <= 0 ? 7
-                                                                         : precision);
-                    for (size_t k = 0; k < v.size(); ++k)
+                    ArrayVal av = evalArr(arg);
+                    if (!av.isScalar)
                     {
-                        if (k) oss << " ";
-                        oss << v[k];
+                        std::ostringstream oss(std::ostringstream::out);
+                        printArray(av, oss);
+                        if (p->u.opr.oper == PRINTLN)
+                        {
+                            oss << std::endl;
+                        }
+                        m_outBuf += oss.str();
+                        return d;
                     }
-                    if (p->u.opr.oper == PRINTLN)
-                    {
-                        oss << std::endl;
-                    }
-                    m_outBuf += oss.str();
-                    return d;
                 }
 
                 DataType tmp = ex(p->u.opr.op[0]);
@@ -1859,7 +2016,46 @@ DataType ex(nodeType* p)
             return ex(p->u.opr.op[1]);
 
         case '=':
-            return Assign(p->u.opr.op[0], ex(p->u.opr.op[1]));
+            {
+                nodeType*   rhs  = p->u.opr.op[1];
+                std::string name = nameOfVar(p->u.opr.op[0]);
+
+                // Array-valued right-hand side: a literal, an element access
+                // that yields a sub-array, or a copy of another array.
+                if (rhs && (rhs->type == nodeType::typeOpr) &&
+                    (rhs->u.opr.oper == ARRAY_LIT))
+                {
+                    arrays[name] = evalArr(rhs);
+                    return d;
+                }
+                if (rhs && (rhs->type == nodeType::typeOpr) &&
+                    (rhs->u.opr.oper == ARRAY_GET))
+                {
+                    ArrayVal av = evalArr(rhs);
+                    if (!av.isScalar)
+                    {
+                        arrays[name] = av;
+                        return d;
+                    }
+                    arrays.erase(name);
+                    DataType s;
+                    s.type = DataType::typeDbl;
+                    s.dbl  = av.num;
+                    return Assign(p->u.opr.op[0], s);
+                }
+                if (rhs &&
+                    ((rhs->type == nodeType::typeId) ||
+                     (rhs->type == nodeType::typeVar)) &&
+                    (arrays.find(nameOfVar(rhs)) != arrays.end()))
+                {
+                    arrays[name] = arrays[nameOfVar(rhs)];
+                    return d;
+                }
+
+                // Scalar (or string) assignment sheds any array binding.
+                arrays.erase(name);
+                return Assign(p->u.opr.op[0], ex(rhs));
+            }
             
         case '~':
             {
@@ -2585,8 +2781,8 @@ private:
     // User-defined functions, by name.
     std::map<std::string, FuncDef>  funcs;
 
-    // Named arrays, by name.
-    std::map<std::string, std::vector<Double> > arrays;
+    // Named arrays, by name. Values may be nested (multi-dimensional).
+    std::map<std::string, ArrayVal> arrays;
 
     // Local-variable frames, one per active function call. Empty at top
     // level, where the globals (sym[] / varStr) are used instead.

@@ -2,7 +2,7 @@
 // Mirrors the ooyacc array example; the reduction values match it.
 
 a = [1, 2, 3, 4, 5];
-print a; println "";        // 1 2 3 4 5
+print a; println "";        // [1, 2, 3, 4, 5]
 println len(a);             // 5
 println sum(a);             // 15
 println avg(a);             // 3
@@ -13,7 +13,7 @@ println a[0];               // 1
 println a[4];               // 5
 
 a[2] = 30;
-print a; println "";        // 1 2 30 4 5
+print a; println "";        // [1, 2, 30, 4, 5]
 println sum(a);             // 42
 println a[0] + a[4];        // 6
 
@@ -30,7 +30,7 @@ println avg(d);             // 3.3333333
 println a[1] * a[3];        // 8
 
 e = [1 + 1, 2 * 3, 4 - 1];
-print e; println "";        // 2 6 3
+print e; println "";        // [2, 6, 3]
 println sum(e);             // 11
 
 // The 2-argument numeric max/min still work alongside array reductions.

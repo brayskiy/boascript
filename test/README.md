@@ -89,6 +89,7 @@ lines, 80% branches — are met (97.6% / 88.2%).
 | `bases`      | hexadecimal (`0x`), binary (`0b`), and octal (`0o`) integer literals |
 | `strfuncs`   | `upper`/`lower` string case conversion and the `hypot(x, y)` builtin |
 | `array`      | arrays: `[..]` literals, `a[i]` get/set, `len`/`sum`/`avg`/`max`/`min`/`prod` reductions, whole-array printing |
+| `ndarray`    | multi-dimensional (nested) arrays: nested literals, `m[i][j][k]` index chains, recursive `sum`, nested bracket printing |
 | `strfun`     | string manipulation: `len`/`reverse`/`find`/`repeat`/`charat`/`substr`/`substitute` and number-stringifying `+` concatenation |
 
 ## Adding a golden-file case

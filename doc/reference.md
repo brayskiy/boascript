@@ -325,11 +325,25 @@
         in its own namespace (so "sum", "len", etc. remain usable as
         ordinary variables). Elements are read and written with a[i]
         (out-of-range access reads 0 and is ignored on write). "print a"
-        prints the whole array, space separated.
+        prints the whole array in bracket form.
 
             a = [1, 2, 3, 4, 5];
             a[2] = 30;
-            print a;              // 1 2 30 4 5
+            print a;              // [1, 2, 30, 4, 5]
+
+        Arrays may be nested (multi-dimensional). Elements are indexed with
+        a chain, and both access and assignment work at any depth. "len" is
+        the size of the outermost dimension; "sum" folds over every scalar
+        recursively; "print" renders nested brackets.
+
+            m = [[1, 2, 3], [4, 5, 6]];
+            print m;              // [[1, 2, 3], [4, 5, 6]]
+            println m[1][2];      // 6
+            println len(m);       // 2
+            println len(m[0]);    // 3
+            println sum(m);       // 21
+            m[0][1] = 20;
+            print m;              // [[1, 20, 3], [4, 5, 6]]
 
         Reductions take an array name:
 

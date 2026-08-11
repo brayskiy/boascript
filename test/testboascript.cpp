@@ -468,6 +468,36 @@ TestCase testCase[] =
         assertEqualString
     },
 
+    // Multi-dimensional arrays.
+
+    {
+        4034,
+        "m = [[1, 2, 3], [4, 5, 6]]; println sum(m);",
+        "21",
+        assertEqualDouble
+    },
+
+    {
+        4036,
+        "m = [[1, 2], [3, 4]]; m[1][0] = 30; println m[0][1] + m[1][0];",
+        "32",
+        assertEqualDouble
+    },
+
+    {
+        4038,
+        "c = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]; println c[1][0][1] + len(c);",
+        "8",
+        assertEqualDouble
+    },
+
+    {
+        4040,
+        "m = [[1, 2, 3], [4, 5, 6]]; print m;",
+        "[[1, 2, 3], [4, 5, 6]]",
+        assertEqualString
+    },
+
 };
 
 

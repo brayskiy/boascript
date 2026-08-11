@@ -1,0 +1,32 @@
+// Multi-dimensional (nested) arrays, mirroring the ooyacc ndarray example.
+// Values match it; arrays print in nested bracket form.
+
+m = [[1, 2, 3], [4, 5, 6]];
+print m; println "";        // [[1, 2, 3], [4, 5, 6]]
+println m[0][0];            // 1
+println m[1][2];            // 6
+println len(m);             // 2   (outer dimension)
+println len(m[0]);          // 3   (inner dimension)
+println sum(m);             // 21  (recursive sum)
+
+m[0][1] = 20;
+print m; println "";        // [[1, 20, 3], [4, 5, 6]]
+println sum(m);             // 39
+println m[1][0] + m[0][2];  // 7
+
+n = [[1 + 1, 2 * 2], [3 * 3, 4 + 4]];
+print n; println "";        // [[2, 4], [9, 8]]
+println sum(n);             // 23
+
+c = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
+print c; println "";        // [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
+println c[0][1][0];         // 3
+println c[1][0][1];         // 6
+println len(c);             // 2
+println len(c[0]);          // 2
+println len(c[0][0]);       // 2
+println sum(c);             // 36
+
+c[1][1][1] = 80;
+println c[1][1][1];         // 80
+println sum(c);             // 108
