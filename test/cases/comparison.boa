@@ -1,0 +1,15 @@
+// Relational, logical, and bitwise operators (all yield 0/1 or ints).
+println 5 > 3;        // 1
+println 5 < 3;        // 0
+println 5 >= 5;       // 1
+println 4 <= 3;       // 0
+println 5 == 5;       // 1
+println 5 != 5;       // 0
+println (1 && 0);     // 0
+println (1 || 0);     // 1
+println !0;           // 1
+println !5;           // 0
+println 6 & 3;        // 2
+println 6 | 1;        // 7
+println 1 << 4;       // 16
+println 256 >> 2;     // 64

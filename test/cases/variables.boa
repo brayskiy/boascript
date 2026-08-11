@@ -1,0 +1,12 @@
+// Single-letter variables and compound assignment.
+a = 5;
+a += 3;    println a;   // 8
+a -= 2;    println a;   // 6
+a *= 4;    println a;   // 24
+a /= 3;    println a;   // 8
+a %= 5;    println a;   // 3
+b = 0;
+++b; ++b; ++b;
+println b;             // 3
+--b;
+println b;             // 2

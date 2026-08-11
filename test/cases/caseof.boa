@@ -1,0 +1,34 @@
+// case / when / else selection.
+
+y = 3;
+case (y) {
+    when 1: println 100;
+    when 2: println 200;
+    when 3: println 300;
+    else:   println 0;
+}                              // 300
+
+// Falls through to the default arm.
+y = 9;
+case (y) {
+    when 1: println 100;
+    when 2: println 200;
+    else:   println 0;
+}                              // 0
+
+// An arm body may be a block with several statements.
+x = 2;
+case (x) {
+    when 2: { a = 10; b = 20; println a + b; }
+    else:   println 0;
+}                              // 30
+
+// case inside a function, returning from an arm.
+func classify(n) {
+    case (n) {
+        when 0: return 100;
+        else:   return 200;
+    }
+}
+println classify(0);           // 100
+println classify(5);           // 200

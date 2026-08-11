@@ -1,0 +1,4 @@
+// A malformed program: 22e3 is a number immediately followed by the
+// identifier dfff, which is not valid. The interpreter reports a syntax
+// error rather than crashing.
+22e3dfff

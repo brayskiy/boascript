@@ -1,0 +1,20 @@
+// String manipulation, mirroring the ooyacc strfun example.
+s = "Hello, World";
+println s;                          // Hello, World
+println len(s);                     // 12
+println upper(s);                   // HELLO, WORLD
+println lower(s);                   // hello, world
+println substr(s, 0, 5);            // Hello
+println substr(s, 7, 5);            // World
+println find(s, "World");           // 7
+println find(s, "xyz");             // -1
+// BoaScript spells replace-all "substitute" (its "replace" is positional).
+println substitute(s, "l", "L");    // HeLLo, WorLd
+println reverse("abcdef");          // fedcba
+println repeat("ab", 3);            // ababab
+println charat(s, 1);               // e
+println "foo" + "bar";              // foobar
+println "count=" + 42;              // count=42  (number stringified)
+println upper(substr(s, 7, 5));     // WORLD
+println len(reverse("hello"));      // 5
+println substr("programming", 3, 4);// gram

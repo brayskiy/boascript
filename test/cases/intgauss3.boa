@@ -1,0 +1,30 @@
+// The intgauss3 builtin: 3-point Gauss-Legendre integration of a named user
+// function over [a, b]. Mirrors the ooyacc intgauss3 example, and the
+// results match it. Exact for polynomials up to degree 5.
+
+setprec(6);
+
+func f(x) { return x * x; }
+println intgauss3(f, 0, 1);            // 0.333333
+
+func g(x) { return x * x * x; }
+println intgauss3(g, 0, 2);            // 4.000000
+
+func p(x) { return 3 * x * x + 2 * x + 1; }
+println intgauss3(p, 0, 1);            // 3.000000
+
+func h(x) { return x * x * x * x; }
+println intgauss3(h, -1, 1);           // 0.400000
+
+func poly(x) { return x * x * x * x * x; }
+println intgauss3(poly, 0, 1);         // 0.166667
+
+// A user function that calls another user function.
+func sq(x) { return x * x; }
+func quad(x) { return sq(x) + 1; }
+println quad(3);                       // 10.000000  (plain call: 3*3 + 1)
+println intgauss3(quad, 0, 3);         // 12.000000  (integral of x^2+1 over [0,3])
+
+// A builtin integrand.
+func s(x) { return sin(x); }
+println intgauss3(s, 0, pi());         // 2.001389

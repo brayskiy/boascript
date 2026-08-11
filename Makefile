@@ -38,10 +38,8 @@ ${PROJECT}: ${OBJS}
 clean: 
 	${RM} ${BUILD_DIR} ${OBJ_DIR} $(SRC_DIR)/${PROJECT}.tab.*
 
-test: ${PROJECT} 
-	@for i in ${TEST_DIR}; do   \
-	echo "Installing in $$i..."; \
-	(cd $$i; $(MAKE) install); done
+test: ${PROJECT}
+	@$(MAKE) -C ${TEST_DIR} check
 
 ###
 

@@ -1,0 +1,25 @@
+// C-style for loops.
+
+// Factorial of 5.
+f = 1;
+for (k = 1; k <= 5; k += 1) { f *= k; }
+println f;              // 120
+
+// Sum 1..10.
+s = 0;
+for (i = 1; i <= 10; i += 1) { s += i; }
+println s;             // 55
+
+// Nested for: sum of i*j for i,j in 1..3.
+t = 0;
+for (i = 1; i <= 3; i += 1) {
+    for (j = 1; j <= 3; j += 1) {
+        t += i * j;
+    }
+}
+println t;             // 36
+
+// A for loop counting down.
+c = 0;
+for (n = 5; n > 0; n -= 1) { c += n; }
+println c;             // 15

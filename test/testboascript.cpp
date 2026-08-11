@@ -282,7 +282,222 @@ TestCase testCase[] =
         "3.1415926535897932384626433832795",
         assertEqualDouble
     },
-    
+
+    // Multi-character (named) variables.
+
+    {
+        3000,
+        "total = 42; println total;",
+        "42",
+        assertEqualDouble
+    },
+
+    {
+        3002,
+        "price = 10; qty = 3; println price * qty;",
+        "30",
+        assertEqualDouble
+    },
+
+    {
+        3004,
+        "sum = 0; i = 1; while (i <= 5) { sum += i; ++i; } println sum;",
+        "15",
+        assertEqualDouble
+    },
+
+    {
+        3006,
+        "count = 5; count *= 3; count %= 4; println count;",
+        "3",
+        assertEqualDouble
+    },
+
+    {
+        3008,
+        "name = \"Boris\"; print name + \" R\";",
+        "Boris R",
+        assertEqualString
+    },
+
+    {
+        3010,
+        "a = 2; result = a * 10; println result;",
+        "20",
+        assertEqualDouble
+    },
+
+    // for loops.
+
+    {
+        4000,
+        "f = 1; for (k = 1; k <= 5; k += 1) { f *= k; } println f;",
+        "120",
+        assertEqualDouble
+    },
+
+    {
+        4002,
+        "t = 0; for (i = 1; i <= 3; i += 1) "
+        "{ for (j = 1; j <= 3; j += 1) { t += i * j; } } println t;",
+        "36",
+        assertEqualDouble
+    },
+
+    // User-defined functions.
+
+    {
+        4004,
+        "func add(a, b) { return a + b; } println add(3, 4);",
+        "7",
+        assertEqualDouble
+    },
+
+    {
+        4006,
+        "func fact(n) { if (n <= 1) { return 1; } return n * fact(n - 1); } "
+        "println fact(5);",
+        "120",
+        assertEqualDouble
+    },
+
+    {
+        4008,
+        "func sq(x) { return x * x; } x = 99; println sq(5) + x;",
+        "124",
+        assertEqualDouble
+    },
+
+    // case / when.
+
+    {
+        4010,
+        "y = 3; case (y) { when 1: println 100; when 2: println 200; "
+        "when 3: println 300; else: println 0; }",
+        "300",
+        assertEqualDouble
+    },
+
+    // Gauss-Legendre integration of x^2 over [0,1] = 1/3, written in
+    // BoaScript as a user function calling another user function.
+    {
+        4012,
+        "func f(x) { return x * x; } "
+        "func gaussint(a, b) { "
+        "  h = (b - a) / 2; c = (a + b) / 2; s = sqrt(0.6); "
+        "  return h * (5.0/9.0*f(c - h*s) + 8.0/9.0*f(c) + 5.0/9.0*f(c + h*s)); "
+        "} println gaussint(0, 1);",
+        "0.3333333",
+        assertEqualDouble
+    },
+
+    // The intgauss3 builtin: integral of x^2 over [0,1] = 1/3.
+    {
+        4014,
+        "func f(x) { return x * x; } println intgauss3(f, 0, 1);",
+        "0.3333333",
+        assertEqualDouble
+    },
+
+    // Number-base literals and hypot/upper/lower builtins.
+
+    {
+        4016,
+        "println 0xFF + 0b1010 + 0o17;",   // 255 + 10 + 15
+        "280",
+        assertEqualDouble
+    },
+
+    {
+        4018,
+        "println hypot(3, 4);",
+        "5",
+        assertEqualDouble
+    },
+
+    {
+        4020,
+        "print upper(\"boa\") + lower(\"SCRIPT\");",
+        "BOAscript",
+        assertEqualString
+    },
+
+    // Arrays: reductions and element mutation.
+
+    {
+        4022,
+        "a = [1, 2, 3, 4, 5]; println sum(a);",
+        "15",
+        assertEqualDouble
+    },
+
+    {
+        4024,
+        "a = [1, 2, 3]; a[1] = 20; println a[0] + a[1] + a[2];",
+        "24",
+        assertEqualDouble
+    },
+
+    {
+        4026,
+        "a = [3, 1, 4, 1, 5]; println max(a) + min(a) + len(a);",
+        "11",
+        assertEqualDouble
+    },
+
+    // String manipulation.
+
+    {
+        4028,
+        "print reverse(\"abc\") + repeat(\"-\", 2) + charat(\"XYZ\", 2);",
+        "cba--Z",
+        assertEqualString
+    },
+
+    {
+        4030,
+        "println find(\"hello world\", \"world\");",
+        "6",
+        assertEqualDouble
+    },
+
+    {
+        4032,
+        "print \"n=\" + 7;",   // number stringified in concatenation
+        "n=7",
+        assertEqualString
+    },
+
+    // Multi-dimensional arrays.
+
+    {
+        4034,
+        "m = [[1, 2, 3], [4, 5, 6]]; println sum(m);",
+        "21",
+        assertEqualDouble
+    },
+
+    {
+        4036,
+        "m = [[1, 2], [3, 4]]; m[1][0] = 30; println m[0][1] + m[1][0];",
+        "32",
+        assertEqualDouble
+    },
+
+    {
+        4038,
+        "c = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]; println c[1][0][1] + len(c);",
+        "8",
+        assertEqualDouble
+    },
+
+    {
+        4040,
+        "m = [[1, 2, 3], [4, 5, 6]]; print m;",
+        "[[1, 2, 3], [4, 5, 6]]",
+        assertEqualString
+    },
+
 };
 
 

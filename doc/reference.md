@@ -6,6 +6,9 @@
 ### 2. Data Types
         BoaScript is a dynamically typed language.
         There are two types in BoaScript: numerical (num) and string.
+
+        Numeric literals may be written in decimal (42, 3.14, 1.5e3) or, for
+        integers, in hexadecimal (0xFF), binary (0b1010), or octal (0o17).
         
 ### 3. Variables.
         Variables are places that store values. Boascript has 26 one-character
@@ -99,6 +102,7 @@
         modf(num, num)           -
         pow(num, num)            - power;
         num ^ num                - also power;
+        hypot(num, num)          - sqrt(x*x + y*y) without overflow;
         sin(num)                 -
         sinh(num)                -
         sqrt(num)                -
@@ -144,6 +148,31 @@
         Example:
             s = tostring(1234567);
             print s;
+
+        upper(string)            - returns the string in upper case;
+        lower(string)            - returns the string in lower case;
+        reverse(string)          - returns the string reversed;
+        repeat(string, num)      - the string repeated num times;
+        charat(string, num)      - one-character string at the given index
+                                   (empty if out of range);
+
+        Example:
+            print upper("hello");         // HELLO
+            print lower("HELLO");         // hello
+            print reverse("abc");         // cba
+            print repeat("ab", 3);        // ababab
+            print charat("hello", 1);     // e
+
+        find(string, string)     - index of the first occurrence of the
+                                   second string, or -1 if not found;
+        len(string)              - length of a string (like strlen); also
+                                   returns the outer size of an array;
+
+        Example:
+            print find("hello world", "world");   // 6
+
+        Note: the '+' operator concatenates when either operand is a string,
+        stringifying a numeric operand, e.g. "count=" + 42 gives "count=42".
 
         date(string) - returns date or/and current time
         string       - format of output date.
@@ -223,7 +252,116 @@
             {
                 expr
             }
-        
+
+        Operator "for"
+
+        A C-style loop: an initializer, a condition, and a post step,
+        followed by the body.
+
+        Example:
+            f = 1;
+            for (k = 1; k <= 5; k += 1)
+            {
+                f *= k;
+            }
+            println f;          // 120
+
+        Operator "case"
+
+        Selects the first arm whose value equals the switch value; an
+        optional "else:" arm is the default. An arm body may be a single
+        statement or a block.
+
+        Example:
+            case (y)
+            {
+                when 1: println 100;
+                when 2: println 200;
+                else:   println 0;
+            }
+
+### 9a. User-defined functions.
+
+        A function is defined with "func", takes zero or more parameters,
+        and returns a value with "return". Parameters and any variables
+        assigned in the body are local to the call (recursion is
+        supported); the function is invoked by name.
+
+        Example:
+            func fact(n)
+            {
+                if (n <= 1) { return 1; }
+                return n * fact(n - 1);
+            }
+            println fact(5);    // 120
+
+        Functions may call other functions, which makes composed numerical
+        routines expressible in the language itself. For instance, 3-point
+        Gauss-Legendre integration of an integrand f over [a, b]:
+
+            func f(x) { return x * x; }
+            func gaussint(a, b)
+            {
+                h = (b - a) / 2;
+                c = (a + b) / 2;
+                s = sqrt(0.6);
+                return h * (5.0/9.0*f(c - h*s)
+                          + 8.0/9.0*f(c)
+                          + 5.0/9.0*f(c + h*s));
+            }
+            println gaussint(0, 1);   // 0.3333333
+
+        The same 3-point Gauss-Legendre integration is also available as a
+        builtin, intgauss3(f, a, b), where f is a one-parameter user
+        function and a, b are the bounds. It is exact for polynomials up to
+        degree 5.
+
+            func f(x) { return x * x; }
+            println intgauss3(f, 0, 1);   // 0.3333333
+
+### 9b. Arrays.
+
+        An array is created with a bracketed list of expressions and lives
+        in its own namespace (so "sum", "len", etc. remain usable as
+        ordinary variables). Elements are read and written with a[i]
+        (out-of-range access reads 0 and is ignored on write). "print a"
+        prints the whole array in bracket form.
+
+            a = [1, 2, 3, 4, 5];
+            a[2] = 30;
+            print a;              // [1, 2, 30, 4, 5]
+
+        Arrays may be nested (multi-dimensional). Elements are indexed with
+        a chain, and both access and assignment work at any depth. "len" is
+        the size of the outermost dimension; "sum" folds over every scalar
+        recursively; "print" renders nested brackets.
+
+            m = [[1, 2, 3], [4, 5, 6]];
+            print m;              // [[1, 2, 3], [4, 5, 6]]
+            println m[1][2];      // 6
+            println len(m);       // 2
+            println len(m[0]);    // 3
+            println sum(m);       // 21
+            m[0][1] = 20;
+            print m;              // [[1, 20, 3], [4, 5, 6]]
+
+        Reductions take an array name:
+
+            len(a)   - number of elements;
+            sum(a)   - sum of the elements;
+            avg(a)   - mean (0 for an empty array);
+            max(a)   - largest element;
+            min(a)   - smallest element;
+            prod(a)  - product of the elements;
+
+        Example:
+            a = [1, 2, 3, 4, 5];
+            println sum(a);       // 15
+            println avg(a);       // 3
+
+        Note that max/min with two numeric arguments remain the ordinary
+        two-argument builtins: max(3, 8) is 8.
+
 ### 10. Comments.
          Line or part of line will be ignored by the interpreter from double
          slash to the end of line.

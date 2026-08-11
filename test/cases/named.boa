@@ -1,0 +1,25 @@
+// Multi-character (named) variables.
+total = 100;
+println total;              // 100
+
+price = 3;
+quantity = 4;
+println price * quantity;   // 12
+
+// Named variables interoperate with single-letter ones.
+a = 2;
+result = a * 10;
+println result;             // 20
+
+// Compound assignment and loops with named variables.
+count = 0;
+i = 1;
+while (i <= 10) { count += i; ++i; }
+println count;              // 55
+
+// Uppercase and digit-bearing names.
+Result = price + quantity;
+println Result;             // 7
+var1 = 8;
+var2 = 9;
+println var1 + var2;        // 17
