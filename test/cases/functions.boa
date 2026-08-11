@@ -1,0 +1,35 @@
+// User-defined functions: definition, call, parameters, and return.
+
+func add(a, b) { return a + b; }
+println add(3, 4);            // 7
+
+// Recursion.
+func fact(n) { if (n <= 1) { return 1; } return n * fact(n - 1); }
+println fact(5);             // 120
+
+// if/else inside a function.
+func max2(a, b) { if (a > b) { return a; } else { return b; } }
+println max2(10, 7);        // 10
+
+// A function's local variables do not leak into the caller's scope.
+func sq(x) { return x * x; }
+x = 99;
+println sq(5);              // 25
+println x;                 // 99  (untouched by sq)
+
+// A function that only has a side effect (no return value).
+func greet() { println 42; }
+greet();                    // 42
+
+// A function containing a loop, with its own local scope.
+func sumto(n) {
+    s = 0;
+    i = 1;
+    while (i <= n) { s += i; ++i; }
+    return s;
+}
+println sumto(10);          // 55
+
+// A function calling another function.
+func quad(x) { return sq(x) + 1; }
+println quad(3);           // 10

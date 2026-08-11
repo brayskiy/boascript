@@ -327,6 +327,70 @@ TestCase testCase[] =
         assertEqualDouble
     },
 
+    // for loops.
+
+    {
+        4000,
+        "f = 1; for (k = 1; k <= 5; k += 1) { f *= k; } println f;",
+        "120",
+        assertEqualDouble
+    },
+
+    {
+        4002,
+        "t = 0; for (i = 1; i <= 3; i += 1) "
+        "{ for (j = 1; j <= 3; j += 1) { t += i * j; } } println t;",
+        "36",
+        assertEqualDouble
+    },
+
+    // User-defined functions.
+
+    {
+        4004,
+        "func add(a, b) { return a + b; } println add(3, 4);",
+        "7",
+        assertEqualDouble
+    },
+
+    {
+        4006,
+        "func fact(n) { if (n <= 1) { return 1; } return n * fact(n - 1); } "
+        "println fact(5);",
+        "120",
+        assertEqualDouble
+    },
+
+    {
+        4008,
+        "func sq(x) { return x * x; } x = 99; println sq(5) + x;",
+        "124",
+        assertEqualDouble
+    },
+
+    // case / when.
+
+    {
+        4010,
+        "y = 3; case (y) { when 1: println 100; when 2: println 200; "
+        "when 3: println 300; else: println 0; }",
+        "300",
+        assertEqualDouble
+    },
+
+    // Gauss-Legendre integration of x^2 over [0,1] = 1/3, written in
+    // BoaScript as a user function calling another user function.
+    {
+        4012,
+        "func f(x) { return x * x; } "
+        "func gaussint(a, b) { "
+        "  h = (b - a) / 2; c = (a + b) / 2; s = sqrt(0.6); "
+        "  return h * (5.0/9.0*f(c - h*s) + 8.0/9.0*f(c) + 5.0/9.0*f(c + h*s)); "
+        "} println gaussint(0, 1);",
+        "0.3333333",
+        assertEqualDouble
+    },
+
 };
 
 

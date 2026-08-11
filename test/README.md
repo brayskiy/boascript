@@ -53,6 +53,10 @@ bash run_tests.sh   # golden-file suite only
 | `ternary`    | `?:` operator and the `ifn()` compatibility builtin                 |
 | `precision`  | `setprec`/`getprec`, `pi()`, output formatting                      |
 | `errors`     | a malformed program reports a syntax error instead of crashing      |
+| `forloop`    | C-style `for (init; cond; post)` loops, including nested and counting down |
+| `functions`  | `func` definitions, parameters, `return`, recursion, local scope, functions calling functions |
+| `caseof`     | `case (e) { when v: .. else: .. }` selection, block arms, `case` inside a function |
+| `gaussint`   | 3-point Gauss-Legendre integration written in BoaScript: a user function calling the integrand (another user function) |
 
 ## Adding a golden-file case
 

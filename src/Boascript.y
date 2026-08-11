@@ -157,6 +157,24 @@ struct nodeType
     } u;
 };
 
+
+// A user-defined function: its parameter names and its body AST. The body
+// node is owned by the parse arena (freed in Close()); the parameter names
+// are kept here because AST nodes cannot hold C++ containers.
+struct FuncDef
+{
+    std::vector<std::string> params;
+    nodeType*                body;
+};
+
+
+// Thrown by a 'return' statement to unwind out of a function body; caught
+// by the call site in ex().
+struct BoaReturn
+{
+    DataType value;
+};
+
 %}
 
 
@@ -166,13 +184,17 @@ struct nodeType
     char      sIndex;                // symbol table index
     char      varName[VAR_NAME_LEN]; // variable name
     nodeType* nPtr;                  // node pointer
+    std::vector<std::string>* sList; // parameter-name list
+    std::vector<nodeType*>*   nList; // argument-expression list
 };
 
 
 %token <Value> NUM STRING
 %token <sIndex> VARIABLE
 %token <varName> VARSTR
-%token WHILE IF PRINT PRINTLN IFN IFS
+%token WHILE FOR IF PRINT PRINTLN IFN IFS
+%token FUNC RETURN UCALL
+%token CASE WHEN
 %token STRLEN SUBSTR REPLACE SUBSTITUTE TOSTR TONUM
 %token ABS ACOS ASIN ATAN ATAN2 CEIL COS COSH EXP FABS FLOOR FMOD
 %token FREXP LDEXP LOG LOG10 MODF POW SIN SINH SQRT CBRT TAN TANH
@@ -195,7 +217,9 @@ struct nodeType
 %right PREF_INC PREF_DEC
 %nonassoc UMINUS BNE
 
-%type <nPtr> stmt expr stmt_list
+%type <nPtr>  stmt expr stmt_list funcdef for_init
+%type <sList> params paramlist
+%type <nList> args arglist arms
 
 %%
 
@@ -203,7 +227,7 @@ program:
                function                 { return 0;                          }
 
 function:
-               function stmt            { ex($2);                            }
+               function stmt            { execTop($2);                       }
                | /* NULL */
                ;
 
@@ -217,6 +241,12 @@ stmt:
                | VARSTR '=' expr        { $$ = opr('=', 2, setVar($1), $3);  }
                | VARSTR '~' expr        { $$ = opr('~', 2, setVar($1), $3);  }
                | WHILE '(' expr ')' stmt   { $$ = opr(WHILE, 2, $3, $5);     }
+               | FOR '(' for_init ';' expr ';' for_init ')' stmt
+                                        { $$ = opr(FOR, 4, $3, $5, $7, $9);  }
+               | RETURN expr ';'        { $$ = opr(RETURN, 1, $2);           }
+               | CASE '(' expr ')' '{' arms '}'
+                                        { $$ = caseStmt($3, $6);             }
+               | funcdef                { $$ = $1;                           }
                | IF '(' expr ')' stmt %prec IFX 
                                         { $$ = opr(IF, 2, $3, $5);           }
                | IF '(' expr ')' stmt ELSE stmt
@@ -227,7 +257,64 @@ stmt:
 
 stmt_list:
                stmt                     { $$ = $1;                           }
-               | stmt_list stmt         { $$ = opr(';', 2, $1, $2);          } 
+               | stmt_list stmt         { $$ = opr(';', 2, $1, $2);          }
+               ;
+
+// A user function definition. It is registered in the funcs table at parse
+// time; the reduction yields a no-op statement so nothing runs until the
+// function is called.
+funcdef:
+               FUNC VARSTR '(' params ')' stmt
+                     { defFunc($2, $4, $6); $$ = opr(';', 2, 0, 0);          }
+               | FUNC VARIABLE '(' params ')' stmt
+                     { defFunc(varOf($2), $4, $6); $$ = opr(';', 2, 0, 0);   }
+               ;
+
+params:
+               /* empty */              { $$ = new std::vector<std::string>(); }
+               | paramlist              { $$ = $1;                           }
+               ;
+
+paramlist:
+               VARSTR                   { $$ = new std::vector<std::string>();
+                                          $$->push_back(std::string($1));    }
+               | VARIABLE               { $$ = new std::vector<std::string>();
+                                          $$->push_back(varOf($1));          }
+               | paramlist ',' VARSTR   { $1->push_back(std::string($3));
+                                          $$ = $1;                           }
+               | paramlist ',' VARIABLE { $1->push_back(varOf($3));
+                                          $$ = $1;                           }
+               ;
+
+// The init and post clauses of a for-loop: an assignment or a bare
+// expression (e.g. i += 1).
+for_init:
+               VARIABLE '=' expr        { $$ = opr('=', 2, id($1), $3);      }
+               | VARSTR '=' expr        { $$ = opr('=', 2, setVar($1), $3);  }
+               | expr                   { $$ = $1;                           }
+               ;
+
+args:
+               /* empty */              { $$ = new std::vector<nodeType*>(); }
+               | arglist                { $$ = $1;                           }
+               ;
+
+arglist:
+               expr                     { $$ = new std::vector<nodeType*>();
+                                          $$->push_back($1);                 }
+               | arglist ',' expr       { $1->push_back($3); $$ = $1;        }
+               ;
+
+// The arms of a case statement, flattened into (value, body) pairs. The
+// default arm ("else:") is stored with a null value.
+arms:
+               /* empty */              { $$ = new std::vector<nodeType*>(); }
+               | arms WHEN expr ':' stmt_list
+                                        { $1->push_back($3);
+                                          $1->push_back($5); $$ = $1;        }
+               | arms ELSE ':' stmt_list
+                                        { $1->push_back(0);
+                                          $1->push_back($4); $$ = $1;        }
                ;
 
 expr:
@@ -235,6 +322,8 @@ expr:
                | STRING                 { $$ = conS($1);                     }
                | VARIABLE               { $$ = id($1);                       }
                | VARSTR                 { $$ = setVar($1);                   }
+               | VARSTR '(' args ')'    { $$ = callFunc(std::string($1), $3);}
+               | VARIABLE '(' args ')'  { $$ = callFunc(varOf($1), $3);      }
                | '(' expr ')'           { $$ = $2;                           }
                | '-' expr %prec UMINUS  { $$ = opr(UMINUS, 1, $2);           }
                | expr '+' expr          { $$ = opr('+', 2, $1, $3);          }
@@ -467,6 +556,84 @@ nodeType* opr(int oper, int nops, ...)
 }
 
 
+// The name of a single-letter variable, given its sym[] index.
+std::string varOf(int i)
+{
+    return std::string(1, (char)('a' + i));
+}
+
+
+// Register a user function. The parameter-name list is consumed (deleted);
+// the body node stays owned by the parse arena.
+void defFunc(std::string name, std::vector<std::string>* prms, nodeType* body)
+{
+    FuncDef fn;
+    fn.params = *prms;
+    fn.body   = body;
+    funcs[name] = fn;
+    delete prms;
+}
+
+
+// Build a user-function call node: op[0] carries the function name and
+// op[1..] the argument expressions. The argument list is consumed.
+nodeType* callFunc(std::string name, std::vector<nodeType*>* argv)
+{
+    int nops = 1 + (int)argv->size();
+
+    nodeType* p = 0;
+    size_t nodeSize = SIZEOF_NODETYPE + sizeof(nodeType::oprNodeType) +
+                      (nops - 1) * sizeof(nodeType*);
+    if ((p = (nodeType *)malloc(nodeSize)) == 0)
+    {
+        yyerror("out of memory");
+    }
+
+    p->type       = nodeType::typeOpr;
+    p->u.opr.oper = UCALL;
+    p->u.opr.nops = nops;
+    p->u.opr.op[0] = setVar(name);
+    for (int i = 0; i < (int)argv->size(); ++i)
+    {
+        p->u.opr.op[i + 1] = (*argv)[i];
+    }
+
+    delete argv;
+    m_nodes.push_back(p);
+    return p;
+}
+
+
+// Build a case statement node: op[0] is the switch value, followed by the
+// (value, body) pairs from the arms list (a null value marks the default
+// "else:" arm). The arms list is consumed.
+nodeType* caseStmt(nodeType* sw, std::vector<nodeType*>* arms)
+{
+    int nops = 1 + (int)arms->size();
+
+    nodeType* p = 0;
+    size_t nodeSize = SIZEOF_NODETYPE + sizeof(nodeType::oprNodeType) +
+                      (nops - 1) * sizeof(nodeType*);
+    if ((p = (nodeType *)malloc(nodeSize)) == 0)
+    {
+        yyerror("out of memory");
+    }
+
+    p->type        = nodeType::typeOpr;
+    p->u.opr.oper  = CASE;
+    p->u.opr.nops  = nops;
+    p->u.opr.op[0] = sw;
+    for (int i = 0; i < (int)arms->size(); ++i)
+    {
+        p->u.opr.op[i + 1] = (*arms)[i];
+    }
+
+    delete arms;
+    m_nodes.push_back(p);
+    return p;
+}
+
+
 void freeNode(nodeType* p)
 {
     if (!p) return;
@@ -586,6 +753,11 @@ void Init(void)
     // Release any nodes left over from a previous parse (e.g. if Close()
     // was not called after a syntax error).
     FreeNodes();
+
+    // Functions reference arena nodes freed by FreeNodes(); drop them and
+    // any leftover call frames before the next parse.
+    funcs.clear();
+    m_scopes.clear();
 
     // Clear any output left over from a previous Calc() on this object.
     m_outBuf.clear();
@@ -823,6 +995,26 @@ int yylex(void)
             else if (strcmp(buf, "while") == 0)
             {
                 return WHILE;
+            }
+            else if (strcmp(buf, "for") == 0)
+            {
+                return FOR;
+            }
+            else if (strcmp(buf, "func") == 0)
+            {
+                return FUNC;
+            }
+            else if (strcmp(buf, "return") == 0)
+            {
+                return RETURN;
+            }
+            else if (strcmp(buf, "case") == 0)
+            {
+                return CASE;
+            }
+            else if (strcmp(buf, "when") == 0)
+            {
+                return WHEN;
             }
             else if (strcmp(buf, "else") == 0)
             {
@@ -1064,20 +1256,82 @@ int isLittleEndian(void)
 }
 
 
-// Assign a value to a variable lvalue, dispatching on the node kind:
-// single-letter variables live in the sym[] array, named (multi-character)
-// variables live in the varStr map.
+// The name of a variable lvalue, regardless of its representation: named
+// variables carry it directly, single-letter ones derive it from the index.
+std::string nameOfVar(nodeType* v)
+{
+    if (v->type == nodeType::typeVar)
+    {
+        return std::string(v->u.var.name);
+    }
+    return std::string(1, (char)('a' + v->u.id.i));
+}
+
+
+// Read a variable's current value. Inside a function call the innermost
+// local frame is used; at top level the globals (sym[] / varStr) are used.
+DataType ReadVar(nodeType* v)
+{
+    if (!m_scopes.empty())
+    {
+        return m_scopes.back()[nameOfVar(v)];
+    }
+
+    DataType d;
+    d.type = DataType::typeDbl;
+    d.dbl  = (Double)0;
+
+    if (v->type == nodeType::typeVar)
+    {
+        if (varStr.find(v->u.var.name) == varStr.end())
+        {
+            varStr[v->u.var.name] = d;
+        }
+        return varStr[v->u.var.name];
+    }
+    return sym[v->u.id.i];
+}
+
+
+// Assign a value to a variable lvalue. Inside a function call the innermost
+// local frame is written; at top level named variables go to the varStr map
+// and single-letter ones to the sym[] array.
 DataType Assign(nodeType* lval, const DataType& val)
 {
-    if (lval && (lval->type == nodeType::typeVar))
+    if (!lval)
+    {
+        return val;
+    }
+
+    if (!m_scopes.empty())
+    {
+        m_scopes.back()[nameOfVar(lval)] = val;
+        return val;
+    }
+
+    if (lval->type == nodeType::typeVar)
     {
         varStr[lval->u.var.name] = val;
     }
-    else if (lval)
+    else
     {
         sym[lval->u.id.i] = val;
     }
     return val;
+}
+
+
+// Execute a top-level statement, absorbing a 'return' used outside any
+// function rather than letting it escape as an uncaught exception.
+void execTop(nodeType* p)
+{
+    try
+    {
+        ex(p);
+    }
+    catch (BoaReturn&)
+    {
+    }
 }
 
 
@@ -1101,32 +1355,125 @@ DataType ex(nodeType* p)
         return p->u.con.value;
     
     case nodeType::typeId:
-        return sym[p->u.id.i];
-        
+        return ReadVar(p);
+
     case nodeType::typeVar:
 #ifdef VARSTR_DEBUG
-        std::cout << "p->u.var.name = " << p->u.var.name << std::endl; 
+        std::cout << "p->u.var.name = " << p->u.var.name << std::endl;
 #endif
-        if (varStr.find(p->u.var.name) == varStr.end())
-        {
-            varStr[p->u.var.name] = d;
-        }
-        return varStr[p->u.var.name];
-    
+        return ReadVar(p);
+
     case nodeType::typeOpr:
 
         switch(p->u.opr.oper)
         {
-        case WHILE: 
+        case WHILE:
             {
                 DataType tmp = ex(p->u.opr.op[0]);
                 while((Int32)tmp.dbl)
                 {
                     ex(p->u.opr.op[1]);
                     tmp = ex(p->u.opr.op[0]);
-                } 
+                }
              }
             return d;
+
+        case FOR:
+            {
+                // op[0] init, op[1] cond, op[2] post, op[3] body.
+                ex(p->u.opr.op[0]);
+                while ((Int32)ex(p->u.opr.op[1]).dbl)
+                {
+                    ex(p->u.opr.op[3]);
+                    ex(p->u.opr.op[2]);
+                }
+            }
+            return d;
+
+        case RETURN:
+            {
+                BoaReturn r;
+                r.value = ex(p->u.opr.op[0]);
+                throw r;
+            }
+
+        case CASE:
+            {
+                // op[0] switch value; then (value, body) pairs, a null
+                // value marking the default arm.
+                DataType  sw       = ex(p->u.opr.op[0]);
+                nodeType* elseBody = 0;
+                for (int k = 1; k + 1 < p->u.opr.nops; k += 2)
+                {
+                    nodeType* val  = p->u.opr.op[k];
+                    nodeType* body = p->u.opr.op[k + 1];
+                    if (val == 0)
+                    {
+                        elseBody = body;
+                        continue;
+                    }
+                    DataType v = ex(val);
+                    bool match = (sw.type == DataType::typeStr &&
+                                  v.type  == DataType::typeStr)
+                                 ? (std::string(sw.str) == std::string(v.str))
+                                 : (sw.dbl == v.dbl);
+                    if (match)
+                    {
+                        ex(body);
+                        return d;
+                    }
+                }
+                if (elseBody)
+                {
+                    ex(elseBody);
+                }
+            }
+            return d;
+
+        case UCALL:
+            {
+                // op[0] carries the function name; op[1..] the arguments.
+                std::string fname = p->u.opr.op[0]->u.var.name;
+                std::map<std::string, FuncDef>::iterator it = funcs.find(fname);
+                if (it == funcs.end())
+                {
+                    yyerror("undefined function: ", fname);
+                    return d;
+                }
+
+                FuncDef& fn = it->second;
+
+                // Evaluate the arguments in the current scope first.
+                int nargs = p->u.opr.nops - 1;
+                std::vector<DataType> argv;
+                for (int k = 0; k < nargs; ++k)
+                {
+                    argv.push_back(ex(p->u.opr.op[k + 1]));
+                }
+
+                // Bind parameters into a fresh local frame.
+                std::map<std::string, DataType> frame;
+                for (size_t k = 0; k < fn.params.size(); ++k)
+                {
+                    frame[fn.params[k]] = (k < argv.size()) ? argv[k]
+                                                            : DataType();
+                }
+
+                m_scopes.push_back(frame);
+                DataType ret;
+                ret.type = DataType::typeDbl;
+                ret.dbl  = (Double)0;
+                try
+                {
+                    ex(fn.body);
+                }
+                catch (BoaReturn& r)
+                {
+                    ret = r.value;
+                }
+                m_scopes.pop_back();
+                return ret;
+            }
 
         case IF:
             {
@@ -1878,6 +2225,13 @@ private:
     int                             precision;
     DataType                        sym['z' - 'a' + 1];
     std::map<std::string, DataType> varStr;
+
+    // User-defined functions, by name.
+    std::map<std::string, FuncDef>  funcs;
+
+    // Local-variable frames, one per active function call. Empty at top
+    // level, where the globals (sym[] / varStr) are used instead.
+    std::vector<std::map<std::string, DataType> > m_scopes;
 
     // Every AST node allocated during a parse is registered here so it
     // can be released in Close(), including nodes left dangling when a

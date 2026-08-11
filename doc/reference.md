@@ -223,7 +223,65 @@
             {
                 expr
             }
-        
+
+        Operator "for"
+
+        A C-style loop: an initializer, a condition, and a post step,
+        followed by the body.
+
+        Example:
+            f = 1;
+            for (k = 1; k <= 5; k += 1)
+            {
+                f *= k;
+            }
+            println f;          // 120
+
+        Operator "case"
+
+        Selects the first arm whose value equals the switch value; an
+        optional "else:" arm is the default. An arm body may be a single
+        statement or a block.
+
+        Example:
+            case (y)
+            {
+                when 1: println 100;
+                when 2: println 200;
+                else:   println 0;
+            }
+
+### 9a. User-defined functions.
+
+        A function is defined with "func", takes zero or more parameters,
+        and returns a value with "return". Parameters and any variables
+        assigned in the body are local to the call (recursion is
+        supported); the function is invoked by name.
+
+        Example:
+            func fact(n)
+            {
+                if (n <= 1) { return 1; }
+                return n * fact(n - 1);
+            }
+            println fact(5);    // 120
+
+        Functions may call other functions, which makes composed numerical
+        routines expressible in the language itself. For instance, 3-point
+        Gauss-Legendre integration of an integrand f over [a, b]:
+
+            func f(x) { return x * x; }
+            func gaussint(a, b)
+            {
+                h = (b - a) / 2;
+                c = (a + b) / 2;
+                s = sqrt(0.6);
+                return h * (5.0/9.0*f(c - h*s)
+                          + 8.0/9.0*f(c)
+                          + 5.0/9.0*f(c + h*s));
+            }
+            println gaussint(0, 1);   // 0.3333333
+
 ### 10. Comments.
          Line or part of line will be ignored by the interpreter from double
          slash to the end of line.
