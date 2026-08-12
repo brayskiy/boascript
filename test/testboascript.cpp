@@ -498,6 +498,31 @@ TestCase testCase[] =
         assertEqualString
     },
 
+    // Boolean literals and bit operators.
+
+    {
+        4042,
+        "println true + false + (true && true) + xor(6, 5) + bitnot(-1);",
+        "5",   // 1 + 0 + 1 + 3 + 0
+        assertEqualDouble
+    },
+
+    // Matrix builtins.
+
+    {
+        4044,
+        "b = [[1,2,3],[4,5,6],[7,8,10]]; println det(b) + det(submatrix(b, 0, 0));",
+        "-1",  // -3 + 2
+        assertEqualDouble
+    },
+
+    {
+        4046,
+        "print solve([[1, 1], [1, -1]], [5, 1]);",
+        "[3, 2]",
+        assertEqualString
+    },
+
 };
 
 
