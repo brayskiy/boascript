@@ -58,6 +58,7 @@
 #include <map>
 #include <sstream>
 #include <algorithm>
+#include <complex>
 
 
 #define CALC_BATCH
@@ -169,16 +170,22 @@ struct nodeType
 struct ArrayVal
 {
     bool                  isScalar;
-    Double                num;
+    Double                num;      // real part of a scalar leaf
+    Double                im;       // imaginary part; 0 for a real leaf
     std::vector<ArrayVal> arr;
 
-    ArrayVal() : isScalar(true), num(0) {}
+    ArrayVal() : isScalar(true), num(0), im(0) {}
 };
 
 
-// Plain numeric matrix / vector, used by the matrix builtins.
+// Plain numeric matrix / vector, used by the real matrix builtins.
 typedef std::vector<std::vector<Double> > BMat;
 typedef std::vector<Double>               BVec;
+
+// Complex matrix / vector, used when a matrix carries complex leaves.
+typedef std::complex<double>              Cplx;
+typedef std::vector<std::vector<Cplx> >   CMat;
+typedef std::vector<Cplx>                 CVec;
 
 
 // A user-defined function: its parameter names and its body AST. The body
@@ -1666,6 +1673,20 @@ std::string asStr(const DataType& v)
 // Scalar value of an array value (0 for a non-scalar array).
 Double numOf(const ArrayVal& v) { return v.isScalar ? v.num : (Double)0; }
 
+// A scalar array leaf as a DataType, preserving complex leaves (im != 0);
+// a non-scalar (sub-array) reads as 0.
+DataType leafData(const ArrayVal& v)
+{
+    if (v.isScalar && v.im != 0)
+    {
+        return makeCplx(v.num, v.im);
+    }
+    DataType d;
+    d.type = DataType::typeDbl;
+    d.dbl  = numOf(v);
+    return d;
+}
+
 // Recursive sum of every scalar leaf.
 Double sumVal(const ArrayVal& v)
 {
@@ -1703,7 +1724,15 @@ void flattenLeaves(const ArrayVal& v, std::vector<Double>& out)
 // Nested, bracketed rendering: [[1, 2, 3], [4, 5, 6]].
 void printArray(const ArrayVal& v, std::ostringstream& os)
 {
-    if (v.isScalar) { os << v.num; return; }
+    if (v.isScalar)
+    {
+        os << v.num;
+        if (v.im != 0)
+        {
+            os << (v.im < 0 ? "-" : "+") << (v.im < 0 ? -v.im : v.im) << "i";
+        }
+        return;
+    }
     os << "[";
     for (size_t i = 0; i < v.arr.size(); ++i)
     {
@@ -1816,8 +1845,12 @@ ArrayVal evalArr(nodeType* p)
         if (it != arrays.end()) return it->second;
     }
 
-    v.isScalar = true;
-    v.num      = (Double)ex(p).dbl;
+    {
+        DataType s = ex(p);
+        v.isScalar = true;
+        v.num      = (Double)s.dbl;
+        v.im       = (s.type == DataType::typeCplx) ? s.im : (Double)0;
+    }
     return v;
 }
 
@@ -1881,6 +1914,208 @@ ArrayVal fromVec(const BVec& v)
         x.arr.push_back(s);
     }
     return x;
+}
+
+
+// ---- Complex-matrix support ----------------------------------------------
+//
+// When a matrix (2D array) carries complex leaves the builtins run over a
+// CMat/CVec instead of the real BMat/BVec. A real matrix keeps the original
+// real code path exactly (hasCplx() returns false), so existing behavior is
+// unchanged; complex inputs are detected and dispatched to the routines below.
+
+// Does any scalar leaf of an array value have a nonzero imaginary part?
+bool hasCplx(const ArrayVal& v)
+{
+    if (v.isScalar) return v.im != 0;
+    for (size_t i = 0; i < v.arr.size(); ++i)
+        if (hasCplx(v.arr[i])) return true;
+    return false;
+}
+
+CMat toCMat(const ArrayVal& v)
+{
+    CMat m;
+    for (size_t i = 0; i < v.arr.size(); ++i)
+    {
+        CVec r;
+        for (size_t j = 0; j < v.arr[i].arr.size(); ++j)
+            r.push_back(Cplx(v.arr[i].arr[j].num, v.arr[i].arr[j].im));
+        m.push_back(r);
+    }
+    return m;
+}
+
+CVec toCVec(const ArrayVal& v)
+{
+    CVec r;
+    for (size_t i = 0; i < v.arr.size(); ++i)
+        r.push_back(Cplx(v.arr[i].num, v.arr[i].im));
+    return r;
+}
+
+// A scalar leaf built from a complex value (IEEE -0 normalized to +0).
+ArrayVal cLeaf(const Cplx& z)
+{
+    ArrayVal s;
+    s.num = (z.real() == 0) ? (Double)0 : (Double)z.real();
+    s.im  = (z.imag() == 0) ? (Double)0 : (Double)z.imag();
+    return s;
+}
+
+ArrayVal fromCMat(const CMat& m)
+{
+    ArrayVal x;
+    x.isScalar = false;
+    for (size_t i = 0; i < m.size(); ++i)
+    {
+        ArrayVal row;
+        row.isScalar = false;
+        for (size_t j = 0; j < m[i].size(); ++j) row.arr.push_back(cLeaf(m[i][j]));
+        x.arr.push_back(row);
+    }
+    return x;
+}
+
+ArrayVal fromCVec(const CVec& v)
+{
+    ArrayVal x;
+    x.isScalar = false;
+    for (size_t i = 0; i < v.size(); ++i) x.arr.push_back(cLeaf(v[i]));
+    return x;
+}
+
+// Complex determinant (Gaussian elimination, partial pivot by magnitude).
+Cplx cmatDet(CMat a)
+{
+    int n = (int)a.size();
+    Cplx det(1.0, 0.0);
+    for (int i = 0; i < n; ++i)
+    {
+        int p = i;
+        for (int r = i + 1; r < n; ++r)
+            if (std::abs(a[r][i]) > std::abs(a[p][i])) p = r;
+        if (std::abs(a[p][i]) < 1e-12) return Cplx(0.0, 0.0);
+        if (p != i) { std::swap(a[p], a[i]); det = -det; }
+        det *= a[i][i];
+        for (int r = i + 1; r < n; ++r)
+        {
+            Cplx f = a[r][i] / a[i][i];
+            for (int c = i; c < n; ++c) a[r][c] -= f * a[i][c];
+        }
+    }
+    return det;
+}
+
+// Complex inverse (Gauss-Jordan).
+CMat cmatInverse(CMat a)
+{
+    int n = (int)a.size();
+    CMat inv(n, CVec(n, Cplx(0, 0)));
+    for (int i = 0; i < n; ++i) inv[i][i] = Cplx(1, 0);
+    for (int i = 0; i < n; ++i)
+    {
+        int p = i;
+        for (int r = i + 1; r < n; ++r)
+            if (std::abs(a[r][i]) > std::abs(a[p][i])) p = r;
+        std::swap(a[p], a[i]); std::swap(inv[p], inv[i]);
+        Cplx dd = a[i][i];
+        for (int c = 0; c < n; ++c) { a[i][c] /= dd; inv[i][c] /= dd; }
+        for (int r = 0; r < n; ++r)
+        {
+            if (r == i) continue;
+            Cplx f = a[r][i];
+            for (int c = 0; c < n; ++c) { a[r][c] -= f * a[i][c]; inv[r][c] -= f * inv[i][c]; }
+        }
+    }
+    return inv;
+}
+
+// Complex linear solve a x = b (Gaussian elimination + back-substitution).
+CVec cmatSolve(CMat a, CVec b)
+{
+    int n = (int)a.size();
+    for (int i = 0; i < n; ++i)
+    {
+        int p = i;
+        for (int r = i + 1; r < n; ++r)
+            if (std::abs(a[r][i]) > std::abs(a[p][i])) p = r;
+        std::swap(a[p], a[i]); std::swap(b[p], b[i]);
+        for (int r = i + 1; r < n; ++r)
+        {
+            Cplx f = a[r][i] / a[i][i];
+            for (int c = i; c < n; ++c) a[r][c] -= f * a[i][c];
+            b[r] -= f * b[i];
+        }
+    }
+    CVec x(n, Cplx(0, 0));
+    for (int i = n - 1; i >= 0; --i)
+    {
+        Cplx s = b[i];
+        for (int c = i + 1; c < n; ++c) s -= a[i][c] * x[c];
+        x[i] = s / a[i][i];
+    }
+    return x;
+}
+
+// Complex matrix multiply (a is n x k, b is k x p; k clamped to both).
+CMat cmatMul(const CMat& a, const CMat& b)
+{
+    int n = (int)a.size();
+    int p = b.empty() ? 0 : (int)b[0].size();
+    int k = (int)std::min(a.empty() ? 0 : (int)a[0].size(), (int)b.size());
+    CMat r(n, CVec(p, Cplx(0, 0)));
+    for (int i = 0; i < n; ++i)
+        for (int t = 0; t < k; ++t)
+            for (int j = 0; j < p; ++j)
+                r[i][j] += a[i][t] * b[t][j];
+    return r;
+}
+
+CMat cmatTranspose(const CMat& m)
+{
+    if (m.empty()) return m;
+    int rows = (int)m.size(), cols = (int)m[0].size();
+    CMat r(cols, CVec(rows, Cplx(0, 0)));
+    for (int i = 0; i < rows; ++i)
+        for (int j = 0; j < cols; ++j)
+            r[j][i] = m[i][j];
+    return r;
+}
+
+// Conjugate (Hermitian) transpose.
+CMat cmatConjTranspose(const CMat& m)
+{
+    CMat t = cmatTranspose(m);
+    for (size_t i = 0; i < t.size(); ++i)
+        for (size_t j = 0; j < t[i].size(); ++j)
+            t[i][j] = std::conj(t[i][j]);
+    return t;
+}
+
+CMat cmatRotate(const CMat& m)   // 90 degrees clockwise
+{
+    if (m.empty()) return m;
+    int rows = (int)m.size(), cols = (int)m[0].size();
+    CMat r(cols, CVec(rows, Cplx(0, 0)));
+    for (int i = 0; i < cols; ++i)
+        for (int j = 0; j < rows; ++j)
+            r[i][j] = m[rows - 1 - j][i];
+    return r;
+}
+
+CMat cmatSubmatrix(const CMat& m, int ri, int cj)
+{
+    CMat r;
+    for (int i = 0; i < (int)m.size(); ++i)
+    {
+        if (i == ri) continue;
+        CVec row;
+        for (int j = 0; j < (int)m[i].size(); ++j)
+            if (j != cj) row.push_back(m[i][j]);
+        r.push_back(row);
+    }
+    return r;
 }
 
 Double matDet(BMat a)
@@ -1980,34 +2215,64 @@ BVec matSolve(BMat a, BVec b)   // solves a x = b by Gaussian elimination
 bool isMatArrayBuiltin(const std::string& n)
 {
     return (n == "inverse") || (n == "rotate") ||
-           (n == "submatrix") || (n == "solve");
+           (n == "submatrix") || (n == "solve") ||
+           (n == "transpose") || (n == "ctranspose") || (n == "matmul");
 }
 
 // Evaluate an array-returning matrix-builtin call node to an array value.
+// A matrix with complex leaves is dispatched to the complex code path; a
+// purely real matrix keeps the original real path unchanged. transpose /
+// ctranspose / matmul always run over complex (real inputs round-trip as
+// real, since their imaginary parts stay 0).
 bool tryMatArrayBuiltin(const std::string& n, nodeType* p, ArrayVal& out)
 {
     int nargs = p->u.opr.nops - 1;
     if ((n == "inverse") && (nargs == 1))
     {
-        out = fromMat(matInverse(toMat(evalArr(p->u.opr.op[1]))));
+        ArrayVal a = evalArr(p->u.opr.op[1]);
+        out = hasCplx(a) ? fromCMat(cmatInverse(toCMat(a)))
+                         : fromMat(matInverse(toMat(a)));
         return true;
     }
     if ((n == "rotate") && (nargs == 1))
     {
-        out = fromMat(matRotate(toMat(evalArr(p->u.opr.op[1]))));
+        ArrayVal a = evalArr(p->u.opr.op[1]);
+        out = hasCplx(a) ? fromCMat(cmatRotate(toCMat(a)))
+                         : fromMat(matRotate(toMat(a)));
         return true;
     }
     if ((n == "submatrix") && (nargs == 3))
     {
+        ArrayVal a = evalArr(p->u.opr.op[1]);
         int ri = (int)ex(p->u.opr.op[2]).dbl;
         int cj = (int)ex(p->u.opr.op[3]).dbl;
-        out = fromMat(matSubmatrix(toMat(evalArr(p->u.opr.op[1])), ri, cj));
+        out = hasCplx(a) ? fromCMat(cmatSubmatrix(toCMat(a), ri, cj))
+                         : fromMat(matSubmatrix(toMat(a), ri, cj));
         return true;
     }
     if ((n == "solve") && (nargs == 2))
     {
-        out = fromVec(matSolve(toMat(evalArr(p->u.opr.op[1])),
-                               toVec(evalArr(p->u.opr.op[2]))));
+        ArrayVal a = evalArr(p->u.opr.op[1]);
+        ArrayVal b = evalArr(p->u.opr.op[2]);
+        out = (hasCplx(a) || hasCplx(b))
+                  ? fromCVec(cmatSolve(toCMat(a), toCVec(b)))
+                  : fromVec(matSolve(toMat(a), toVec(b)));
+        return true;
+    }
+    if ((n == "transpose") && (nargs == 1))
+    {
+        out = fromCMat(cmatTranspose(toCMat(evalArr(p->u.opr.op[1]))));
+        return true;
+    }
+    if ((n == "ctranspose") && (nargs == 1))
+    {
+        out = fromCMat(cmatConjTranspose(toCMat(evalArr(p->u.opr.op[1]))));
+        return true;
+    }
+    if ((n == "matmul") && (nargs == 2))
+    {
+        out = fromCMat(cmatMul(toCMat(evalArr(p->u.opr.op[1])),
+                               toCMat(evalArr(p->u.opr.op[2]))));
         return true;
     }
     return false;
@@ -2166,7 +2431,14 @@ DataType ex(nodeType* p)
                 {
                     if ((nargs == 1) && (fname == "det"))
                     {
-                        d.dbl = (Double)matDet(toMat(evalArr(p->u.opr.op[1])));
+                        ArrayVal a = evalArr(p->u.opr.op[1]);
+                        if (hasCplx(a))
+                        {
+                            Cplx dz = cmatDet(toCMat(a));
+                            if (dz.imag() == 0) { d.dbl = (Double)dz.real(); return d; }
+                            return makeCplx((Double)dz.real(), (Double)dz.imag());
+                        }
+                        d.dbl = (Double)matDet(toMat(a));
                         return d;
                     }
                     if ((nargs == 1) && (fname == "bitnot"))
@@ -2294,10 +2566,9 @@ DataType ex(nodeType* p)
             return d;
 
         case ARRAY_GET:
-            // Element access in scalar context yields the scalar found there
-            // (0 if it lands on a sub-array or out of range).
-            d.dbl = numOf(getElem(p));
-            return d;
+            // Element access yields the scalar found there, preserving a
+            // complex leaf (0 if it lands on a sub-array or out of range).
+            return leafData(getElem(p));
 
         case ARRAY_SET:
             setElem(p);
@@ -2457,10 +2728,7 @@ DataType ex(nodeType* p)
                         return d;
                     }
                     arrays.erase(name);
-                    DataType s;
-                    s.type = DataType::typeDbl;
-                    s.dbl  = av.num;
-                    return Assign(p->u.opr.op[0], s);
+                    return Assign(p->u.opr.op[0], leafData(av));
                 }
 
                 // Scalar (or string) assignment sheds any array binding.

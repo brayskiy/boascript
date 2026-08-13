@@ -539,6 +539,30 @@ TestCase testCase[] =
         assertEqualString
     },
 
+    // Complex matrices.
+
+    {
+        4052,
+        "M = [[complex(1,1), complex(2,0)], [complex(0,1), complex(1,-1)]]; print det(M);",
+        "2.0000000-2.0000000i",   // (1+i)(1-i) - 2i
+        assertEqualString
+    },
+
+    {
+        4054,
+        "print matmul([[complex(0,1), complex(0,0)], [complex(0,0), complex(0,1)]],"
+        " [[complex(0,1), complex(0,0)], [complex(0,0), complex(0,1)]]);",
+        "[[-1, 0], [0, -1]]",     // (i*I)^2 = -I
+        assertEqualString
+    },
+
+    {
+        4056,
+        "v = [complex(2, 3), 7]; println cimag(v[0]) + creal(v[1]);",
+        "10",                     // 3 + 7  (index preserves complex)
+        assertEqualDouble
+    },
+
 };
 
 

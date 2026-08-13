@@ -482,6 +482,53 @@ static void testComplex()
     // string-convertible (concatenation uses the compact re+imi form).
     eqNum("cx_parts",  "w = cmul(complex(1,2), complex(3,-1)); println creal(w) + cimag(w);", 10);
     eqStr("cx_concat", "print \"w = \" + cmul(complex(1,2), complex(3,-1));", "w = 5+5i");
+    // Identities and manipulation.
+    eqNum("cx_abs2",   "println cabs(complex(5, 12));", 13);
+    eqNum("cx_argpi",  "println carg(complex(-1, 0));", 3.1415927);          // pi
+    eqStr("cx_recip",  "print cdiv(complex(1,0), complex(0,1));", "0.0000000-1.0000000i"); // 1/i = -i
+    eqStr("cx_zzbar",  "print cmul(complex(3,4), conj(complex(3,4)));", "25.0000000+0.0000000i"); // |z|^2
+    eqNum("cx_zzbar_re","println creal(cmul(complex(3,4), conj(complex(3,4))));", 25);
+    eqStr("cx_addinv", "print csub(cadd(complex(2,3), complex(5,-4)), complex(5,-4));", "2.0000000+3.0000000i");
+    eqStr("cx_pow3",   "z = complex(0,1); print cmul(cmul(z,z),z);", "0.0000000-1.0000000i"); // i^3 = -i
+    eqStr("cx_pow4",   "z = complex(0,1); print cmul(cmul(z,z),cmul(z,z));", "1.0000000+0.0000000i"); // i^4 = 1
+}
+
+
+static void testComplexMatrix()
+{
+    // Complex leaves round-trip through array build / print / index.
+    eqStr("cxm_build",  "print [complex(1,2), complex(3,-1), 5];", "[1+2i, 3-1i, 5]");
+    eqNum("cxm_index",  "v = [complex(1,2), complex(3,-1)]; println cimag(v[0]);", 2);
+    // Assigning a complex value into an existing array element preserves it.
+    eqNum("cxm_setelem","a = [0, 0]; a[1] = complex(4, 5); println cimag(a[1]);", 5);
+    // Structural builtins preserve complex leaves.
+    eqStr("cxm_print",  "print [[complex(1,1), complex(2,0)], [complex(0,1), complex(1,-1)]];",
+          "[[1+1i, 2], [0+1i, 1-1i]]");
+    eqStr("cxm_rotate", "print rotate([[complex(1,1), complex(2,0)], [complex(0,1), complex(1,-1)]]);",
+          "[[0+1i, 1+1i], [1-1i, 2]]");
+    eqStr("cxm_transp", "print transpose([[complex(1,1), complex(2,0)], [complex(0,1), complex(1,-1)]]);",
+          "[[1+1i, 0+1i], [2, 1-1i]]");
+    eqStr("cxm_ctransp","print ctranspose([[complex(1,1), complex(2,0)], [complex(0,1), complex(1,-1)]]);",
+          "[[1-1i, 0-1i], [2, 1+1i]]");
+    // Complex determinant: (1+i)(1-i) - 2i = 2 - 2i; a Hermitian matrix has a real det.
+    eqStr("cxm_det",    "print det([[complex(1,1), complex(2,0)], [complex(0,1), complex(1,-1)]]);",
+          "2.0000000-2.0000000i");
+    eqNum("cxm_det_herm","println det([[complex(2,0), complex(0,1)], [complex(0,-1), complex(2,0)]]);", 3);
+    // Matrix multiply (complex and real), and inverse verified against identity.
+    eqStr("cxm_matmul", "M = [[complex(1,1), complex(2,0)], [complex(0,1), complex(1,-1)]];"
+                        " print matmul(M, [[1, 0], [0, 1]]);", "[[1+1i, 2], [0+1i, 1-1i]]");
+    eqStr("cxm_hermprod","M = [[complex(1,1), complex(2,0)], [complex(0,1), complex(1,-1)]];"
+                        " print matmul(ctranspose(M), M);", "[[3, 1-3i], [1+3i, 6]]");
+    eqStr("cxm_inv",    "A = [[complex(1,1), complex(0,0)], [complex(0,0), complex(2,0)]];"
+                        " print matmul(A, inverse(A));", "[[1, 0], [0, 1]]");
+    // Complex linear solve: (1+i) x = 2+2i  ->  x = 2.
+    eqStr("cxm_solve1", "print solve([[complex(1,1)]], [complex(2,2)]);", "[2]");
+    eqStr("cxm_solve2", "print solve([[complex(1,0), complex(0,1)], [complex(0,1), complex(1,0)]],"
+                        " [complex(1,0), complex(0,0)]);", "[0.5, 0-0.5i]");
+    // The shared code paths leave real matrices unchanged.
+    eqNum("cxm_det_real",   "println det([[1, 2], [3, 4]]);", -2);
+    eqStr("cxm_matmul_real","print matmul([[1, 2], [3, 4]], [[5, 6], [7, 8]]);", "[[19, 22], [43, 50]]");
+    eqStr("cxm_transp_real","print transpose([[1, 2, 3], [4, 5, 6]]);", "[[1, 4], [2, 5], [3, 6]]");
 }
 
 
@@ -590,6 +637,7 @@ int main()
     testBoolean();
     testMatrix();
     testComplex();
+    testComplexMatrix();
     testVersion();
     testLexer();
     testApi();

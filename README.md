@@ -53,10 +53,11 @@ std::cout << res << std::endl;   // 2.0000000
 * **Arrays**: `[..]` literals, `a[i]` get/set, and `len`/`sum`/`avg`/`max`/
   `min`/`prod` reductions — including **multi-dimensional** (nested) arrays
   with `m[i][j][k]` index chains, and **matrix builtins**
-  (`det`/`inverse`/`rotate`/`submatrix`/`solve`).
+  (`det`/`inverse`/`rotate`/`submatrix`/`solve`/`transpose`/`ctranspose`/`matmul`).
 * **Complex numbers**: built and combined through builtins
   (`complex`/`creal`/`cimag`/`cabs`/`carg`/`conj`/`cadd`/`csub`/`cmul`/`cdiv`),
-  printed as `re+imi`; real arguments promote to `(n, 0)`.
+  printed as `re+imi`; real arguments promote to `(n, 0)`. Complex values can
+  be array/matrix elements, and the matrix builtins operate over them.
 * **Introspection**: `version()` returns the release version (`YY.WW.BB`),
   and `about()` / `description()` return the application description.
 

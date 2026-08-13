@@ -382,6 +382,9 @@
             rotate(m)           - rotate 90 degrees clockwise;
             submatrix(m, i, j)  - m with row i and column j removed (a minor);
             solve(A, b)         - solution x of the linear system A x = b;
+            transpose(m)        - transpose (rows <-> columns);
+            ctranspose(m)       - conjugate (Hermitian) transpose;
+            matmul(a, b)        - matrix product a * b;
 
         Example:
             A = [[1, 2], [3, 4]];
@@ -389,6 +392,11 @@
             print inverse(A);            // [[-2, 1], [1.5, -0.5]]
             println det(submatrix([[1,2,3],[4,5,6],[7,8,10]], 0, 0));   // 2
             print solve([[2, 1], [1, 3]], [3, 5]);   // [0.8, 1.4]
+            print matmul([[1,2],[3,4]], [[5,6],[7,8]]);   // [[19, 22], [43, 50]]
+            print transpose([[1, 2, 3], [4, 5, 6]]);      // [[1, 4], [2, 5], [3, 6]]
+
+        Matrix elements may be complex (see 9b2). All of these builtins accept
+        complex matrices; the result carries complex entries where they arise.
 
 ### 9b2. Complex numbers.
 
@@ -416,6 +424,17 @@
             println cdiv(complex(1, 2), complex(3, -1));   // 0.1+0.7i
             i = complex(0, 1);
             println cmul(i, i);              // -1+0i  (i^2)
+
+        Complex values may be array and matrix elements: they round-trip
+        through building, printing, and indexing, and the matrix builtins
+        (9b1) operate over them. Inside an array a complex element prints in
+        the compact form re+imi (e.g. 1+2i); a real element prints with no i.
+
+            M = [[complex(1, 1), complex(2, 0)],
+                 [complex(0, 1), complex(1, -1)]];
+            println det(M);                  // 2-2i
+            print matmul(ctranspose(M), M);  // Hermitian: [[3, 1-3i], [1+3i, 6]]
+            print solve([[complex(1, 1)]], [complex(2, 2)]);   // [2]
 
 ### 9c. Version and description.
 
