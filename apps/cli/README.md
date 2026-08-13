@@ -43,6 +43,25 @@ Type "exit()" or Ctrl-D (i.e. EOF) to exit.
 * **Unbalanced** `{ ( [` continue on a `...` prompt until closed.
 * **`exit()`** (or Ctrl-D / EOF) exits; a bare `exit` prints a reminder.
 
+### Output color
+
+Result output can be tinted with a named foreground color:
+
+* At launch: `boa --color green` (or `-c green`, `--color=green`).
+* Live, inside the REPL: `:color green` changes it, `:color off` clears it,
+  and a bare `:color` reports the current setting and lists the names.
+
+Available names: `black red green yellow blue magenta cyan white gray`
+(`grey`), the `bright*` variants (`brightred`, …), and `off`.
+
+Color is only ever written to a terminal — piped or redirected output stays
+plain — and the [`NO_COLOR`](https://no-color.org) environment variable
+disables it entirely. Only the result output is colored; the prompts are not.
+
+```sh
+boa --color cyan
+```
+
 ### Line editing
 
 A small built-in editor (no external dependency) provides:
