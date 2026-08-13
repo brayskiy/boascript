@@ -90,6 +90,8 @@ lines, 80% branches — are met (97.6% / 88.2%).
 | `strfuncs`   | `upper`/`lower` string case conversion and the `hypot(x, y)` builtin |
 | `array`      | arrays: `[..]` literals, `a[i]` get/set, `len`/`sum`/`avg`/`max`/`min`/`prod` reductions, whole-array printing |
 | `ndarray`    | multi-dimensional (nested) arrays: nested literals, `m[i][j][k]` index chains, recursive `sum`, nested bracket printing |
+| `matrix`     | matrix builtins: `det`/`inverse`/`rotate`/`submatrix`/`solve`, composed and their array results assigned/indexed |
+| `boolean`    | comparison and logical operators, `true`/`false` literals, and the `xor`/`bitnot` bit builtins |
 | `strfun`     | string manipulation: `len`/`reverse`/`find`/`repeat`/`charat`/`substr`/`substitute` and number-stringifying `+` concatenation |
 
 ## Adding a golden-file case

@@ -63,9 +63,18 @@
 
         num |  num  - bit OR;
         num &  num  - bit AND;
-        num !  num  - bit NOT;
+        !num        - logical NOT;
         num << num  - left bit shift;
         num >> num  - right bit shift;
+        xor(num, num) - bitwise exclusive-or;
+        bitnot(num)   - bitwise complement (~);
+
+        The literals "true" and "false" are the numbers 1 and 0.
+
+        Example:
+           println true && false;   // 0
+           println xor(12, 10);     // 6
+           println bitnot(0);       // -1
         
         Example:
             print 1 << 2;
@@ -361,6 +370,25 @@
 
         Note that max/min with two numeric arguments remain the ordinary
         two-argument builtins: max(3, 8) is 8.
+
+### 9b1. Matrix builtins.
+
+        Matrices are ordinary 2D arrays. The following builtins operate on
+        them; their results are ordinary values (assignable, indexable,
+        printable) so they compose.
+
+            det(m)              - determinant;
+            inverse(m)          - matrix inverse;
+            rotate(m)           - rotate 90 degrees clockwise;
+            submatrix(m, i, j)  - m with row i and column j removed (a minor);
+            solve(A, b)         - solution x of the linear system A x = b;
+
+        Example:
+            A = [[1, 2], [3, 4]];
+            println det(A);              // -2
+            print inverse(A);            // [[-2, 1], [1.5, -0.5]]
+            println det(submatrix([[1,2,3],[4,5,6],[7,8,10]], 0, 0));   // 2
+            print solve([[2, 1], [1, 3]], [3, 5]);   // [0.8, 1.4]
 
 ### 9c. Version and description.
 

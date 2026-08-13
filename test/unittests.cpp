@@ -410,6 +410,54 @@ static void testArrays()
 }
 
 
+static void testBoolean()
+{
+    // Comparison and logical (already present) plus true/false literals.
+    eqNum("true_lit",  "println true;", 1);
+    eqNum("false_lit", "println false;", 0);
+    eqNum("and_tf",    "println (true && false);", 0);
+    eqNum("or_tf",     "println (true || false);", 1);
+    eqNum("not_true",  "println !true;", 0);
+    eqNum("cmp_lt",    "println 3 < 5;", 1);
+    eqNum("cmp_eq",    "println 4 == 4;", 1);
+    eqNum("cmp_ne",    "println 4 != 4;", 0);
+    // Bitwise xor() and bitnot().
+    eqNum("xor_a",     "println xor(12, 10);", 6);
+    eqNum("xor_b",     "println xor(255, 15);", 240);
+    eqNum("xor_zero",  "println xor(5, 5);", 0);
+    eqNum("bitnot_0",  "println bitnot(0);", -1);
+    eqNum("bitnot_5",  "println bitnot(5);", -6);
+    // true/false remain usable in arithmetic (they are 1 and 0).
+    eqNum("true_plus", "println true + true + false;", 2);
+}
+
+
+static void testMatrix()
+{
+    eqNum("det_2x2",   "a = [[1, 2], [3, 4]]; println det(a);", -2);
+    eqNum("det_3x3",   "b = [[1,2,3],[4,5,6],[7,8,10]]; println det(b);", -3);
+    eqNum("det_diag",  "c = [[2, 0], [0, 4]]; println det(c);", 8);
+    // inverse: check a couple of elements.
+    eqNum("inv_00",    "a = [[1, 2], [3, 4]]; m = inverse(a); println m[0][0];", -2);
+    eqNum("inv_11",    "a = [[1, 2], [3, 4]]; m = inverse(a); println m[1][1];", -0.5);
+    eqStr("inv_print", "a = [[1, 2], [3, 4]]; print inverse(a);",
+          "[[-2, 1], [1.5, -0.5]]");
+    // rotate 90 degrees clockwise.
+    eqStr("rotate",    "a = [[1, 2], [3, 4]]; print rotate(a);", "[[3, 1], [4, 2]]");
+    eqStr("rotate2",   "a = [[1, 2], [3, 4]]; print rotate(rotate(a));", "[[4, 3], [2, 1]]");
+    // submatrix (minor), and composition with det.
+    eqStr("submatrix", "b = [[1,2,3],[4,5,6],[7,8,10]]; print submatrix(b, 0, 0);",
+          "[[5, 6], [8, 10]]");
+    eqNum("det_of_sub","b = [[1,2,3],[4,5,6],[7,8,10]]; println det(submatrix(b, 0, 0));", 2);
+    // solve a linear system.
+    eqStr("solve2",    "print solve([[2, 1], [1, 3]], [3, 5]);", "[0.8, 1.4]");
+    eqStr("solve3",    "print solve([[2,1,-1],[-3,-1,2],[-2,1,2]], [8,-11,-3]);",
+          "[2, 3, -1]");
+    // matrix-builtin result is a normal array: assign, index, reduce.
+    eqNum("mat_sum",   "a = [[1, 2], [3, 4]]; m = rotate(a); println sum(m);", 10);
+}
+
+
 static void testVersion()
 {
     // version() returns a YY.WW.BB string; about()/description() the app text.
@@ -512,6 +560,8 @@ int main()
     testHypotUpperLower();
     testStringManip();
     testArrays();
+    testBoolean();
+    testMatrix();
     testVersion();
     testLexer();
     testApi();

@@ -1,0 +1,33 @@
+// Matrix builtins on 2D arrays, mirroring the ooyacc matrix example.
+// det/inverse/rotate/submatrix/solve compose and their results are ordinary
+// arrays (assignable, indexable, printable).
+
+A = [[1, 2], [3, 4]];
+println det(A);              // -2
+print inverse(A); println "";           // [[-2, 1], [1.5, -0.5]]
+print rotate(A); println "";            // [[3, 1], [4, 2]]
+print rotate(rotate(A)); println "";    // [[4, 3], [2, 1]]
+
+B = [[1, 2, 3], [4, 5, 6], [7, 8, 10]];
+println det(B);             // -3
+print submatrix(B, 0, 0); println "";   // [[5, 6], [8, 10]]
+print submatrix(B, 1, 1); println "";   // [[1, 3], [7, 10]]
+println det(submatrix(B, 0, 0));        // 2  (composition)
+
+C = [[2, 0], [0, 4]];
+println det(C);             // 8
+print inverse(C); println "";           // [[0.5, 0], [0, 0.25]]
+
+D = [[4, 7], [2, 6]];
+print inverse(D); println "";           // [[0.6, -0.7], [-0.2, 0.4]]
+
+R = [[1, 2, 3], [4, 5, 6]];
+print rotate(R); println "";            // [[4, 1], [5, 2], [6, 3]]
+
+print solve([[2, 1], [1, 3]], [3, 5]); println "";          // [0.8, 1.4]
+print solve([[1, 1], [1, -1]], [5, 1]); println "";         // [3, 2]
+print solve([[2, 1, -1], [-3, -1, 2], [-2, 1, 2]], [8, -11, -3]); println "";  // [2, 3, -1]
+
+// The result of a matrix builtin is a normal array: assignable and indexable.
+M = inverse(A);
+println M[0][0] + M[1][1];  // -2.5
