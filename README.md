@@ -11,7 +11,7 @@ string and get the output back.
 * [APP](src) — BoaScript implementation (the `ooyacc` grammar `Boascript.y`).
 * [EXTRAS](extras) — supporting classes (types, tokenizer, date/time).
 * [TEST](test) — test suites, golden-file cases, and coverage tooling.
-* [CLI](cli) — `boa`, an interactive REPL for the language.
+* [CLI](apps/cli) — `boa`, an interactive REPL for the language.
 * [DEMO](demo) — an interactive CLI demo of the language features.
 * [DOC](doc) — the [language reference](doc/reference.md).
 
@@ -37,8 +37,8 @@ std::cout << res << std::endl;   // 2.0000000
 * **Variables**: single-letter and multi-character names, `=`, and compound
   assignment (`+= -= *= /= %=`, `++`, `--`).
 * **Operators**: arithmetic (`+ - * / % ^`), comparison, logical
-  (`&& || !`), bitwise (`& |`), and shifts (`<< >>`), with C-style
-  precedence; the ternary `?:`.
+  (`&& || !`), bitwise (`& |`, `xor`, `bitnot`), and shifts (`<< >>`), with
+  C-style precedence; the ternary `?:`; and the `true`/`false` literals.
 * **Control flow**: `if`/`else`, `while`, C-style `for`, and
   `case`/`when`/`else`.
 * **Functions**: `func name(params) { … return e; }` with recursion and
@@ -52,7 +52,8 @@ std::cout << res << std::endl;   // 2.0000000
   `charat`, `tostr`, `tonum`.
 * **Arrays**: `[..]` literals, `a[i]` get/set, and `len`/`sum`/`avg`/`max`/
   `min`/`prod` reductions — including **multi-dimensional** (nested) arrays
-  with `m[i][j][k]` index chains.
+  with `m[i][j][k]` index chains, and **matrix builtins**
+  (`det`/`inverse`/`rotate`/`submatrix`/`solve`).
 * **Introspection**: `version()` returns the release version (`YY.WW.BB`),
   and `about()` / `description()` return the application description.
 
@@ -78,7 +79,7 @@ echoed; statements run silently.
 
 ```sh
 make cli          # builds the library and the REPL
-./cli/boa
+./apps/cli/boa
 ```
 
 ```
@@ -88,7 +89,7 @@ make cli          # builds the library and the REPL
 >>> exit()
 ```
 
-See [cli/README.md](cli/README.md) for details.
+See [apps/cli/README.md](apps/cli/README.md) for details.
 
 ## Demo
 

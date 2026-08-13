@@ -170,6 +170,11 @@ struct ArrayVal
 };
 
 
+// Plain numeric matrix / vector, used by the matrix builtins.
+typedef std::vector<std::vector<Double> > BMat;
+typedef std::vector<Double>               BVec;
+
+
 // A user-defined function: its parameter names and its body AST. The body
 // node is owned by the parse arena (freed in Close()); the parameter names
 // are kept here because AST nodes cannot hold C++ containers.
@@ -247,8 +252,8 @@ function:
                ;
 
 stmt:
-               ';'                      { $$ = opr(';', 2, 0, 0);            }
-               | COMMENT                { $$ = opr(COMMENT, 2, 0, 0);        }
+               ';'                      { $$ = opr(';', 2, (nodeType*)0, (nodeType*)0);            }
+               | COMMENT                { $$ = opr(COMMENT, 2, (nodeType*)0, (nodeType*)0);        }
                | expr ';'               { $$ = $1;                           }
                | PRINT expr ';'         { $$ = opr(PRINT, 1, $2);            }
                | PRINTLN expr ';'       { $$ = opr(PRINTLN, 1, $2);          }
@@ -284,9 +289,9 @@ stmt_list:
 // function is called.
 funcdef:
                FUNC VARSTR '(' params ')' stmt
-                     { defFunc($2, $4, $6); $$ = opr(';', 2, 0, 0);          }
+                     { defFunc($2, $4, $6); $$ = opr(';', 2, (nodeType*)0, (nodeType*)0);          }
                | FUNC VARIABLE '(' params ')' stmt
-                     { defFunc(varOf($2), $4, $6); $$ = opr(';', 2, 0, 0);   }
+                     { defFunc(varOf($2), $4, $6); $$ = opr(';', 2, (nodeType*)0, (nodeType*)0);   }
                ;
 
 params:
@@ -1138,7 +1143,14 @@ int yylex(void)
 #ifdef CALC_DEBUG
             printf("%s\n", buf);
 #endif
-            if (strcmp(buf, "print") == 0)
+            if ((strcmp(buf, "true") == 0) || (strcmp(buf, "false") == 0))
+            {
+                // Boolean literals are just the numbers 1 and 0.
+                yylval.Value.dbl  = (strcmp(buf, "true") == 0) ? 1.0 : 0.0;
+                yylval.Value.type = DataType::typeDbl;
+                return NUM;
+            }
+            else if (strcmp(buf, "print") == 0)
             {
                 return PRINT;
             }
@@ -1672,10 +1684,21 @@ void printArray(const ArrayVal& v, std::ostringstream& os)
 bool isArrayNode(nodeType* p)
 {
     if (!p) return false;
-    if ((p->type == nodeType::typeOpr) &&
-        ((p->u.opr.oper == ARRAY_LIT) || (p->u.opr.oper == ARRAY_GET)))
+    if (p->type == nodeType::typeOpr)
     {
-        return true;
+        if ((p->u.opr.oper == ARRAY_LIT) || (p->u.opr.oper == ARRAY_GET))
+        {
+            return true;
+        }
+        // A matrix builtin that produces an array (inverse/rotate/...).
+        if (p->u.opr.oper == UCALL)
+        {
+            std::string fname = p->u.opr.op[0]->u.var.name;
+            if ((funcs.find(fname) == funcs.end()) && isMatArrayBuiltin(fname))
+            {
+                return true;
+            }
+        }
     }
     if (((p->type == nodeType::typeId) || (p->type == nodeType::typeVar)) &&
         (arrays.find(nameOfVar(p)) != arrays.end()))
@@ -1741,6 +1764,15 @@ ArrayVal evalArr(nodeType* p)
         {
             return getElem(p);
         }
+        if (p->u.opr.oper == UCALL)
+        {
+            std::string fname = p->u.opr.op[0]->u.var.name;
+            if (funcs.find(fname) == funcs.end())
+            {
+                ArrayVal out;
+                if (tryMatArrayBuiltin(fname, p, out)) return out;
+            }
+        }
     }
 
     if ((p->type == nodeType::typeId) || (p->type == nodeType::typeVar))
@@ -1753,6 +1785,198 @@ ArrayVal evalArr(nodeType* p)
     v.isScalar = true;
     v.num      = (Double)ex(p).dbl;
     return v;
+}
+
+
+// ---- Matrix builtins -----------------------------------------------------
+//
+// Matrices are ordinary 2D arrays. These builtins convert an array value to a
+// plain numeric matrix, run the linear algebra, and convert the result back;
+// they are dispatched by name (like the reductions) so they compose, e.g.
+// det(submatrix(m, 0, 0)).
+
+BMat toMat(const ArrayVal& v)
+{
+    BMat m;
+    for (size_t i = 0; i < v.arr.size(); ++i)
+    {
+        BVec r;
+        for (size_t j = 0; j < v.arr[i].arr.size(); ++j)
+        {
+            r.push_back(v.arr[i].arr[j].num);
+        }
+        m.push_back(r);
+    }
+    return m;
+}
+
+BVec toVec(const ArrayVal& v)
+{
+    BVec r;
+    for (size_t i = 0; i < v.arr.size(); ++i) r.push_back(numOf(v.arr[i]));
+    return r;
+}
+
+ArrayVal fromMat(const BMat& m)
+{
+    ArrayVal x;
+    x.isScalar = false;
+    for (size_t i = 0; i < m.size(); ++i)
+    {
+        ArrayVal row;
+        row.isScalar = false;
+        for (size_t j = 0; j < m[i].size(); ++j)
+        {
+            ArrayVal s;
+            s.num = m[i][j];
+            row.arr.push_back(s);
+        }
+        x.arr.push_back(row);
+    }
+    return x;
+}
+
+ArrayVal fromVec(const BVec& v)
+{
+    ArrayVal x;
+    x.isScalar = false;
+    for (size_t i = 0; i < v.size(); ++i)
+    {
+        ArrayVal s;
+        s.num = v[i];
+        x.arr.push_back(s);
+    }
+    return x;
+}
+
+Double matDet(BMat a)
+{
+    int n = (int)a.size();
+    Double det = 1.0;
+    for (int i = 0; i < n; ++i)
+    {
+        int p = i;
+        for (int r = i + 1; r < n; ++r) if (fabs(a[r][i]) > fabs(a[p][i])) p = r;
+        if (fabs(a[p][i]) < 1e-12) return 0.0;
+        if (p != i) { std::swap(a[p], a[i]); det = -det; }
+        det *= a[i][i];
+        for (int r = i + 1; r < n; ++r)
+        {
+            Double f = a[r][i] / a[i][i];
+            for (int c = i; c < n; ++c) a[r][c] -= f * a[i][c];
+        }
+    }
+    return det;
+}
+
+BMat matInverse(BMat a)
+{
+    int n = (int)a.size();
+    BMat inv(n, BVec(n, 0.0));
+    for (int i = 0; i < n; ++i) inv[i][i] = 1.0;
+    for (int i = 0; i < n; ++i)
+    {
+        int p = i;
+        for (int r = i + 1; r < n; ++r) if (fabs(a[r][i]) > fabs(a[p][i])) p = r;
+        std::swap(a[p], a[i]); std::swap(inv[p], inv[i]);
+        Double dd = a[i][i];
+        for (int c = 0; c < n; ++c) { a[i][c] /= dd; inv[i][c] /= dd; }
+        for (int r = 0; r < n; ++r)
+        {
+            if (r == i) continue;
+            Double f = a[r][i];
+            for (int c = 0; c < n; ++c) { a[r][c] -= f * a[i][c]; inv[r][c] -= f * inv[i][c]; }
+        }
+    }
+    return inv;
+}
+
+BMat matRotate(const BMat& m)   // 90 degrees clockwise
+{
+    if (m.empty()) return m;
+    int rows = (int)m.size(), cols = (int)m[0].size();
+    BMat r(cols, BVec(rows, 0.0));
+    for (int i = 0; i < cols; ++i)
+        for (int j = 0; j < rows; ++j)
+            r[i][j] = m[rows - 1 - j][i];
+    return r;
+}
+
+BMat matSubmatrix(const BMat& m, int ri, int cj)
+{
+    BMat r;
+    for (int i = 0; i < (int)m.size(); ++i)
+    {
+        if (i == ri) continue;
+        BVec row;
+        for (int j = 0; j < (int)m[i].size(); ++j)
+            if (j != cj) row.push_back(m[i][j]);
+        r.push_back(row);
+    }
+    return r;
+}
+
+BVec matSolve(BMat a, BVec b)   // solves a x = b by Gaussian elimination
+{
+    int n = (int)a.size();
+    for (int i = 0; i < n; ++i)
+    {
+        int p = i;
+        for (int r = i + 1; r < n; ++r) if (fabs(a[r][i]) > fabs(a[p][i])) p = r;
+        std::swap(a[p], a[i]); std::swap(b[p], b[i]);
+        for (int r = i + 1; r < n; ++r)
+        {
+            Double f = a[r][i] / a[i][i];
+            for (int c = i; c < n; ++c) a[r][c] -= f * a[i][c];
+            b[r] -= f * b[i];
+        }
+    }
+    BVec x(n, 0.0);
+    for (int i = n - 1; i >= 0; --i)
+    {
+        Double s = b[i];
+        for (int c = i + 1; c < n; ++c) s -= a[i][c] * x[c];
+        x[i] = s / a[i][i];
+    }
+    return x;
+}
+
+// The matrix builtins that return an array value (as opposed to det, which
+// returns a scalar).
+bool isMatArrayBuiltin(const std::string& n)
+{
+    return (n == "inverse") || (n == "rotate") ||
+           (n == "submatrix") || (n == "solve");
+}
+
+// Evaluate an array-returning matrix-builtin call node to an array value.
+bool tryMatArrayBuiltin(const std::string& n, nodeType* p, ArrayVal& out)
+{
+    int nargs = p->u.opr.nops - 1;
+    if ((n == "inverse") && (nargs == 1))
+    {
+        out = fromMat(matInverse(toMat(evalArr(p->u.opr.op[1]))));
+        return true;
+    }
+    if ((n == "rotate") && (nargs == 1))
+    {
+        out = fromMat(matRotate(toMat(evalArr(p->u.opr.op[1]))));
+        return true;
+    }
+    if ((n == "submatrix") && (nargs == 3))
+    {
+        int ri = (int)ex(p->u.opr.op[2]).dbl;
+        int cj = (int)ex(p->u.opr.op[3]).dbl;
+        out = fromMat(matSubmatrix(toMat(evalArr(p->u.opr.op[1])), ri, cj));
+        return true;
+    }
+    if ((n == "solve") && (nargs == 2))
+    {
+        out = fromVec(matSolve(toMat(evalArr(p->u.opr.op[1])),
+                               toVec(evalArr(p->u.opr.op[2]))));
+        return true;
+    }
+    return false;
 }
 
 
@@ -1899,6 +2123,35 @@ DataType ex(nodeType* p)
                     if (fname == "len")
                     {
                         d.dbl = (Double)asStr(ex(p->u.opr.op[1])).size();
+                        return d;
+                    }
+                }
+
+                // Builtins (unless shadowed by a user function of the name).
+                if (funcs.find(fname) == funcs.end())
+                {
+                    if ((nargs == 1) && (fname == "det"))
+                    {
+                        d.dbl = (Double)matDet(toMat(evalArr(p->u.opr.op[1])));
+                        return d;
+                    }
+                    if ((nargs == 1) && (fname == "bitnot"))
+                    {
+                        d.dbl = (Double)(~(Int32)ex(p->u.opr.op[1]).dbl);
+                        return d;
+                    }
+                    if ((nargs == 2) && (fname == "xor"))
+                    {
+                        d.dbl = (Double)((Int32)ex(p->u.opr.op[1]).dbl ^
+                                         (Int32)ex(p->u.opr.op[2]).dbl);
+                        return d;
+                    }
+                    // Array-returning matrix builtins used in scalar context
+                    // read as 0 (like any whole array); the array value is
+                    // produced by evalArr().
+                    if (isMatArrayBuiltin(fname))
+                    {
+                        d.dbl = numOf(evalArr(p));
                         return d;
                     }
                 }
@@ -2076,16 +2329,11 @@ DataType ex(nodeType* p)
                 nodeType*   rhs  = p->u.opr.op[1];
                 std::string name = nameOfVar(p->u.opr.op[0]);
 
-                // Array-valued right-hand side: a literal, an element access
-                // that yields a sub-array, or a copy of another array.
-                if (rhs && (rhs->type == nodeType::typeOpr) &&
-                    (rhs->u.opr.oper == ARRAY_LIT))
-                {
-                    arrays[name] = evalArr(rhs);
-                    return d;
-                }
-                if (rhs && (rhs->type == nodeType::typeOpr) &&
-                    (rhs->u.opr.oper == ARRAY_GET))
+                // An array-valued right-hand side (a literal, an element
+                // access, a matrix-builtin result, or another array) is stored
+                // in the array namespace; a scalar element access falls back
+                // to a scalar assignment.
+                if (isArrayNode(rhs))
                 {
                     ArrayVal av = evalArr(rhs);
                     if (!av.isScalar)
@@ -2098,14 +2346,6 @@ DataType ex(nodeType* p)
                     s.type = DataType::typeDbl;
                     s.dbl  = av.num;
                     return Assign(p->u.opr.op[0], s);
-                }
-                if (rhs &&
-                    ((rhs->type == nodeType::typeId) ||
-                     (rhs->type == nodeType::typeVar)) &&
-                    (arrays.find(nameOfVar(rhs)) != arrays.end()))
-                {
-                    arrays[name] = arrays[nameOfVar(rhs)];
-                    return d;
                 }
 
                 // Scalar (or string) assignment sheds any array binding.
