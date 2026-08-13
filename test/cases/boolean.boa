@@ -1,0 +1,33 @@
+// Boolean logic, comparison, and bit operators.
+
+// Comparison operators (yield 1 or 0).
+println 3 < 5;          // 1
+println 5 <= 5;         // 1
+println 7 > 2;          // 1
+println 2 >= 9;         // 0
+println 4 == 4;         // 1
+println 4 != 4;         // 0
+
+// Logical operators.
+println (1 && 1);       // 1
+println (1 && 0);       // 0
+println (0 || 1);       // 1
+println !0;             // 1
+println !5;             // 0
+
+// Boolean literals are 1 and 0.
+println true;           // 1
+println false;          // 0
+println (true && false);// 0
+println (true || false);// 1
+println !true;          // 0
+
+// Bit operators: and / or / shifts, plus xor() and bitnot().
+println 6 & 3;          // 2
+println 6 | 1;          // 7
+println 1 << 4;         // 16
+println 256 >> 2;       // 64
+println xor(12, 10);    // 6   (0b1100 ^ 0b1010)
+println xor(255, 15);   // 240
+println bitnot(0);      // -1
+println bitnot(5);      // -6

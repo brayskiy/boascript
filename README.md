@@ -37,8 +37,8 @@ std::cout << res << std::endl;   // 2.0000000
 * **Variables**: single-letter and multi-character names, `=`, and compound
   assignment (`+= -= *= /= %=`, `++`, `--`).
 * **Operators**: arithmetic (`+ - * / % ^`), comparison, logical
-  (`&& || !`), bitwise (`& |`), and shifts (`<< >>`), with C-style
-  precedence; the ternary `?:`.
+  (`&& || !`), bitwise (`& |`, `xor`, `bitnot`), and shifts (`<< >>`), with
+  C-style precedence; the ternary `?:`; and the `true`/`false` literals.
 * **Control flow**: `if`/`else`, `while`, C-style `for`, and
   `case`/`when`/`else`.
 * **Functions**: `func name(params) { … return e; }` with recursion and
@@ -52,7 +52,8 @@ std::cout << res << std::endl;   // 2.0000000
   `charat`, `tostr`, `tonum`.
 * **Arrays**: `[..]` literals, `a[i]` get/set, and `len`/`sum`/`avg`/`max`/
   `min`/`prod` reductions — including **multi-dimensional** (nested) arrays
-  with `m[i][j][k]` index chains.
+  with `m[i][j][k]` index chains, and **matrix builtins**
+  (`det`/`inverse`/`rotate`/`submatrix`/`solve`).
 * **Introspection**: `version()` returns the release version (`YY.WW.BB`),
   and `about()` / `description()` return the application description.
 
