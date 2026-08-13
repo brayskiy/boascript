@@ -8,6 +8,7 @@ on:
     branches: [ master, develop ]
   pull_request:
     branches: [ master, develop ]
+  workflow_dispatch:   # allow manual runs
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -35,3 +36,67 @@ jobs:
 
       - name: Run test suites
         run: make test
+
+  windows:
+    name: Windows build (MinGW-w64)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2 / MinGW-w64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: >-
+            make
+            git
+            mingw-w64-x86_64-gcc
+
+      - name: Build ooyacc
+        run: |
+          git clone --depth 1 https://github.com/brayskiy/ooyacc.git ooyacc-src
+          make -C ooyacc-src directories program
+          ls -l ooyacc-src/bin
+
+      - name: Generate parser and Version.h
+        run: |
+          # ooyacc is a native binary; give it a Windows-valid TMPDIR (its
+          # default "/tmp" is not a valid native path).
+          mkdir -p _yacctmp
+          export TMPDIR="$(cygpath -m "$PWD/_yacctmp")"
+          OOYACC="$(ls ooyacc-src/bin/ooyacc*)"
+          "$OOYACC" -b Boascript -d src/Boascript.y
+          mv Boascript.tab.* src/
+          {
+            echo '#ifndef _BOASCRIPT_VERSION_H_'
+            echo '#define _BOASCRIPT_VERSION_H_'
+            echo '#define BOASCRIPT_VERSION "ci"'
+            echo '#define BOASCRIPT_DESCRIPTION "BoaScript"'
+            echo '#endif'
+          } > src/Version.h
+
+      - name: Build library and boa.exe
+        run: |
+          g++ -O2 -DNDEBUG -DCALC_BATCH -Iextras -c src/Boascript.tab.cpp extras/DateTime.cpp
+          ar rcs libBoascript.a Boascript.tab.o DateTime.o
+          g++ -O2 -DNDEBUG -DCALC_BATCH -Isrc -Iextras apps/cli/boa.cpp -L. -lBoascript -o boa.exe
+          ls -l boa.exe
+
+      - name: Smoke test (non-interactive path)
+        run: |
+          set -e
+          out=$(printf 'a = 0\na + 2\nfunc sq(n){ return n*n; }\nsq(9)\nexit()\n' | ./boa.exe)
+          echo "$out"
+          echo "$out" | grep -q '2.0000000'
+          echo "$out" | grep -q '81.0000000'
+
+      - name: Upload boa.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: boa-windows
+          path: boa.exe

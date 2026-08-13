@@ -252,8 +252,8 @@ function:
                ;
 
 stmt:
-               ';'                      { $$ = opr(';', 2, 0, 0);            }
-               | COMMENT                { $$ = opr(COMMENT, 2, 0, 0);        }
+               ';'                      { $$ = opr(';', 2, (nodeType*)0, (nodeType*)0);            }
+               | COMMENT                { $$ = opr(COMMENT, 2, (nodeType*)0, (nodeType*)0);        }
                | expr ';'               { $$ = $1;                           }
                | PRINT expr ';'         { $$ = opr(PRINT, 1, $2);            }
                | PRINTLN expr ';'       { $$ = opr(PRINTLN, 1, $2);          }
@@ -289,9 +289,9 @@ stmt_list:
 // function is called.
 funcdef:
                FUNC VARSTR '(' params ')' stmt
-                     { defFunc($2, $4, $6); $$ = opr(';', 2, 0, 0);          }
+                     { defFunc($2, $4, $6); $$ = opr(';', 2, (nodeType*)0, (nodeType*)0);          }
                | FUNC VARIABLE '(' params ')' stmt
-                     { defFunc(varOf($2), $4, $6); $$ = opr(';', 2, 0, 0);   }
+                     { defFunc(varOf($2), $4, $6); $$ = opr(';', 2, (nodeType*)0, (nodeType*)0);   }
                ;
 
 params:
