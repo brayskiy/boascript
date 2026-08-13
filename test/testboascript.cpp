@@ -523,6 +523,22 @@ TestCase testCase[] =
         assertEqualString
     },
 
+    // Complex numbers.
+
+    {
+        4048,
+        "w = cmul(complex(1, 2), complex(3, -1)); println creal(w) + cimag(w);",
+        "10",   // (1+2i)(3-i) = 5+5i -> 5 + 5
+        assertEqualDouble
+    },
+
+    {
+        4050,
+        "print cdiv(complex(1, 2), complex(3, -1));",
+        "0.1000000+0.7000000i",
+        assertEqualString
+    },
+
 };
 
 

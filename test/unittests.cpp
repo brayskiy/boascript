@@ -458,6 +458,33 @@ static void testMatrix()
 }
 
 
+static void testComplex()
+{
+    // Construction, accessors, magnitude, conjugate. (eqStr matches exactly,
+    // so these use print, not println, to avoid a trailing newline.)
+    eqStr("cx_make",   "print complex(3, 4);", "3.0000000+4.0000000i");
+    eqNum("cx_real",   "println creal(complex(3, 4));", 3);
+    eqNum("cx_imag",   "println cimag(complex(3, 4));", 4);
+    eqNum("cx_abs",    "println cabs(complex(3, 4));", 5);
+    eqNum("cx_arg",    "println carg(complex(0, 1));", 1.5707963);   // pi/2
+    eqStr("cx_conj",   "print conj(complex(3, 4));", "3.0000000-4.0000000i");
+    // Arithmetic.
+    eqStr("cx_add",    "print cadd(complex(1,2), complex(3,-1));", "4.0000000+1.0000000i");
+    eqStr("cx_sub",    "print csub(complex(1,2), complex(3,-1));", "-2.0000000+3.0000000i");
+    eqStr("cx_mul",    "print cmul(complex(1,2), complex(3,-1));", "5.0000000+5.0000000i");
+    eqStr("cx_div",    "print cdiv(complex(1,2), complex(3,-1));", "0.1000000+0.7000000i");
+    // i^2 = -1; i^3 = -i (exercises negative-zero normalization on the real part).
+    eqStr("cx_isq",    "i = complex(0,1); print cmul(i, i);", "-1.0000000+0.0000000i");
+    eqStr("cx_icube",  "i = complex(0,1); print cmul(cmul(i,i), i);", "0.0000000-1.0000000i");
+    // A real argument promotes to (n, 0).
+    eqStr("cx_promote","print cadd(complex(3,4), 1);", "4.0000000+4.0000000i");
+    // A complex value is an ordinary scalar: assignable, parts reducible, and
+    // string-convertible (concatenation uses the compact re+imi form).
+    eqNum("cx_parts",  "w = cmul(complex(1,2), complex(3,-1)); println creal(w) + cimag(w);", 10);
+    eqStr("cx_concat", "print \"w = \" + cmul(complex(1,2), complex(3,-1));", "w = 5+5i");
+}
+
+
 static void testVersion()
 {
     // version() returns a YY.WW.BB string; about()/description() the app text.
@@ -562,6 +589,7 @@ int main()
     testArrays();
     testBoolean();
     testMatrix();
+    testComplex();
     testVersion();
     testLexer();
     testApi();

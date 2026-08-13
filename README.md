@@ -54,6 +54,9 @@ std::cout << res << std::endl;   // 2.0000000
   `min`/`prod` reductions — including **multi-dimensional** (nested) arrays
   with `m[i][j][k]` index chains, and **matrix builtins**
   (`det`/`inverse`/`rotate`/`submatrix`/`solve`).
+* **Complex numbers**: built and combined through builtins
+  (`complex`/`creal`/`cimag`/`cabs`/`carg`/`conj`/`cadd`/`csub`/`cmul`/`cdiv`),
+  printed as `re+imi`; real arguments promote to `(n, 0)`.
 * **Introspection**: `version()` returns the release version (`YY.WW.BB`),
   and `about()` / `description()` return the application description.
 

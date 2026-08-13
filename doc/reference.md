@@ -390,6 +390,33 @@
             println det(submatrix([[1,2,3],[4,5,6],[7,8,10]], 0, 0));   // 2
             print solve([[2, 1], [1, 3]], [3, 5]);   // [0.8, 1.4]
 
+### 9b2. Complex numbers.
+
+        A complex number is an ordinary scalar value (assignable, printable,
+        string-convertible). There is no [re, im] literal - that is array
+        syntax - so complex values are built and combined through builtins.
+        Any argument may be a real number, which promotes to (n, 0). Values
+        print as re+imi (e.g. 3.0000000+4.0000000i).
+
+            complex(re, im)  - construct re + im*i;
+            creal(z)         - real part;
+            cimag(z)         - imaginary part;
+            cabs(z)          - magnitude |z|;
+            carg(z)          - argument (phase angle, radians);
+            conj(z)          - complex conjugate;
+            cadd(a, b)       - a + b;
+            csub(a, b)       - a - b;
+            cmul(a, b)       - a * b;
+            cdiv(a, b)       - a / b;
+
+        Example:
+            z = complex(3, 4);
+            println cabs(z);                 // 5
+            println cmul(z, conj(z));        // 25+0i  (|z|^2)
+            println cdiv(complex(1, 2), complex(3, -1));   // 0.1+0.7i
+            i = complex(0, 1);
+            println cmul(i, i);              // -1+0i  (i^2)
+
 ### 9c. Version and description.
 
         version()     - the release version string, in the form YY.WW.BB

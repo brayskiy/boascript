@@ -82,21 +82,27 @@ struct DataType
 {
     enum typeEnum
     {
-        typeDbl = 0,
-        typeStr = 1,
-        typeUnk = 2
+        typeDbl  = 0,
+        typeStr  = 1,
+        typeUnk  = 2,
+        typeCplx = 3
     };
 
     typeEnum type;
-    Double   dbl;
+    Double   dbl;                    // real part when type == typeCplx
+    Double   im;                     // imaginary part; only read when typeCplx
     char     str[MAX_STR_LEN + 1];
-    
+
     friend std::ostream& operator << (std::ostream& os, const DataType& src)
     {
         os << "[ type = " << src.type;
         if (src.type == typeDbl)
         {
             os << ", dbl = " << src.dbl;
+        }
+        else if (src.type == typeCplx)
+        {
+            os << ", dbl = " << src.dbl << ", im = " << src.im;
         }
         else if (src.type == typeStr)
         {
@@ -1613,6 +1619,30 @@ DataType makeStr(const std::string& s)
 }
 
 
+// ---- Complex-number helpers ----------------------------------------------
+//
+// A complex value is a scalar DataType (typeCplx) carrying re in .dbl and im
+// in .im. There is no complex literal syntax (that would collide with array
+// literals [a, b]); complex values are built and combined through builtins
+// (complex/cadd/csub/cmul/cdiv/cabs/carg/conj/creal/cimag). A real argument
+// promotes to (n, 0).
+
+DataType makeCplx(Double re, Double im)
+{
+    DataType d;
+    d.type = DataType::typeCplx;
+    d.dbl  = (re == 0) ? (Double)0 : re;   // normalize IEEE -0 to +0
+    d.im   = (im == 0) ? (Double)0 : im;
+    return d;
+}
+
+// Imaginary part of a value; a real number (or anything non-complex) is 0.
+Double imOf(const DataType& v)
+{
+    return (v.type == DataType::typeCplx) ? v.im : (Double)0;
+}
+
+
 // The string form of a value: string values as-is, numbers formatted the
 // same way tostr() formats them. Used by '+' when one operand is a string.
 std::string asStr(const DataType& v)
@@ -1623,6 +1653,10 @@ std::string asStr(const DataType& v)
     }
     std::ostringstream os;
     os << v.dbl;
+    if (v.type == DataType::typeCplx)
+    {
+        os << (v.im < 0 ? "-" : "+") << (v.im < 0 ? -v.im : v.im) << "i";
+    }
     return os.str();
 }
 
@@ -2146,6 +2180,65 @@ DataType ex(nodeType* p)
                                          (Int32)ex(p->u.opr.op[2]).dbl);
                         return d;
                     }
+
+                    // Complex-number builtins. Real arguments promote to
+                    // (n, 0); results are scalar complex (or real) values.
+                    if ((nargs == 2) && (fname == "complex"))
+                    {
+                        return makeCplx(ex(p->u.opr.op[1]).dbl,
+                                        ex(p->u.opr.op[2]).dbl);
+                    }
+                    if ((nargs == 1) && (fname == "creal"))
+                    {
+                        d.dbl = ex(p->u.opr.op[1]).dbl;
+                        return d;
+                    }
+                    if ((nargs == 1) && (fname == "cimag"))
+                    {
+                        d.dbl = imOf(ex(p->u.opr.op[1]));
+                        return d;
+                    }
+                    if ((nargs == 1) && (fname == "cabs"))
+                    {
+                        DataType z = ex(p->u.opr.op[1]);
+                        d.dbl = (Double)hypot((double)z.dbl, (double)imOf(z));
+                        return d;
+                    }
+                    if ((nargs == 1) && (fname == "carg"))
+                    {
+                        DataType z = ex(p->u.opr.op[1]);
+                        d.dbl = (Double)atan2((double)imOf(z), (double)z.dbl);
+                        return d;
+                    }
+                    if ((nargs == 1) && (fname == "conj"))
+                    {
+                        DataType z = ex(p->u.opr.op[1]);
+                        return makeCplx(z.dbl, -imOf(z));
+                    }
+                    if ((nargs == 2) && (fname == "cadd"))
+                    {
+                        DataType a = ex(p->u.opr.op[1]), b = ex(p->u.opr.op[2]);
+                        return makeCplx(a.dbl + b.dbl, imOf(a) + imOf(b));
+                    }
+                    if ((nargs == 2) && (fname == "csub"))
+                    {
+                        DataType a = ex(p->u.opr.op[1]), b = ex(p->u.opr.op[2]);
+                        return makeCplx(a.dbl - b.dbl, imOf(a) - imOf(b));
+                    }
+                    if ((nargs == 2) && (fname == "cmul"))
+                    {
+                        DataType a = ex(p->u.opr.op[1]), b = ex(p->u.opr.op[2]);
+                        return makeCplx(a.dbl * b.dbl - imOf(a) * imOf(b),
+                                        a.dbl * imOf(b) + imOf(a) * b.dbl);
+                    }
+                    if ((nargs == 2) && (fname == "cdiv"))
+                    {
+                        DataType a = ex(p->u.opr.op[1]), b = ex(p->u.opr.op[2]);
+                        Double ar = a.dbl, ai = imOf(a), br = b.dbl, bi = imOf(b);
+                        Double den = br * br + bi * bi;
+                        return makeCplx((ar * br + ai * bi) / den,
+                                        (ai * br - ar * bi) / den);
+                    }
                     // Array-returning matrix builtins used in scalar context
                     // read as 0 (like any whole array); the array value is
                     // produced by evalArr().
@@ -2289,6 +2382,28 @@ DataType ex(nodeType* p)
                        oss << std::endl;
                     }
                     m_outBuf += oss.str();
+#endif // CALC_BATCH
+                }
+                else if (tmp.type == DataType::typeCplx)
+                {
+                    // Render as re+imi / re-imi at the current precision.
+                    if (precision <= 0) precision = 7;
+                    std::ostringstream cs(std::ostringstream::out);
+                    cs << std::fixed << std::setprecision(precision)
+                       << tmp.dbl << (tmp.im < 0 ? "-" : "+")
+                       << (tmp.im < 0 ? -tmp.im : tmp.im) << "i";
+#ifndef CALC_BATCH
+                    std::cout << cs.str();
+                    if (p->u.opr.oper == PRINTLN)
+                    {
+                        std::cout << std::endl;
+                    }
+#else
+                    if (p->u.opr.oper == PRINTLN)
+                    {
+                       cs << std::endl;
+                    }
+                    m_outBuf += cs.str();
 #endif // CALC_BATCH
                 }
                 else if (tmp.type == DataType::typeStr)
