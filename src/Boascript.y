@@ -881,6 +881,7 @@ void Init(void)
     m_outBuf.clear();
 
     precision = 7;
+    m_outColor.clear();
 }
 
 
@@ -911,6 +912,16 @@ void Load(std::string in)
 std::string& GetRes(void)
 {
     return m_outBuf;
+}
+
+
+// The output color requested by the script via the color() builtin, as the
+// raw name passed ("" means default / off). A session persists it across
+// runLine() calls; an interactive front-end may read it after each line to
+// tint subsequent output. Headless callers can ignore it.
+const std::string& outputColor(void) const
+{
+    return m_outColor;
 }
 
 
@@ -2130,6 +2141,16 @@ DataType ex(nodeType* p)
                 // Builtins (unless shadowed by a user function of the name).
                 if (funcs.find(fname) == funcs.end())
                 {
+                    // color(name) records a requested output color as session
+                    // state; color() with no argument clears it. The value has
+                    // no effect inside the library -- an interactive front-end
+                    // (the boa REPL) reads outputColor() and tints its output.
+                    if (fname == "color")
+                    {
+                        m_outColor = (nargs >= 1) ? asStr(ex(p->u.opr.op[1]))
+                                                  : std::string();
+                        return makeStr(m_outColor);
+                    }
                     if ((nargs == 1) && (fname == "det"))
                     {
                         d.dbl = (Double)matDet(toMat(evalArr(p->u.opr.op[1])));
@@ -3071,6 +3092,7 @@ DataType ex(nodeType* p)
 private:
 
     int                             precision;
+    std::string                     m_outColor;   // color() request (name; "" = default)
     DataType                        sym['z' - 'a' + 1];
     std::map<std::string, DataType> varStr;
 

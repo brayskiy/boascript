@@ -15,8 +15,10 @@ terminal (Linux, macOS) and on the native Windows console (Windows 10+,
 which supports virtual-terminal sequences).
 
 Result output can be tinted with a named color, set at launch with
---color NAME or changed live with the ":color NAME" REPL command; color is
-written only to a terminal and honors the NO_COLOR convention.
+--color NAME, changed live with the ":color NAME" REPL command, or set by the
+script itself via the color("NAME") builtin (read back through
+Boascript::outputColor()); color is written only to a terminal and honors the
+NO_COLOR convention.
 
 Type exit() or press Ctrl-D (Ctrl-Z on Windows) / EOF to leave.
 
@@ -193,9 +195,9 @@ static bool isStatement(const std::string& t)
     std::string w = firstWord(t);
     if (w == "print" || w == "println" || w == "if" || w == "while" ||
         w == "for" || w == "func" || w == "return" || w == "case" ||
-        w == "when" || w == "exit")
+        w == "when" || w == "exit" || w == "color")
     {
-        return true;
+        return true;                            // color("..") runs silently
     }
     return hasAssignment(t);
 }
@@ -575,6 +577,11 @@ int main(int argc, char** argv)
     Boascript bs;
     bs.beginSession();
 
+    // The script can change the color itself via the color() builtin. We track
+    // the last color it requested and only act when that request changes, so a
+    // startup --color or a :color command is not overridden on every line.
+    std::string prevScriptColor = bs.outputColor();
+
     LineReader reader;
     std::string buffer;
     std::string line;
@@ -660,6 +667,21 @@ int main(int argc, char** argv)
         }
 
         std::string out = bs.runLine(prog);
+
+        // Apply a color the script requested via color(), if it changed. This
+        // takes effect for the current line's output and onward. An unknown
+        // name is reported (to stderr, to keep stdout clean) and ignored.
+        std::string reqColor = bs.outputColor();
+        if (reqColor != prevScriptColor)
+        {
+            prevScriptColor = reqColor;
+            bool known;
+            std::string sgr = colorSgr(reqColor, &known);
+            if (known) activeSgr = sgr;
+            else std::fprintf(stderr, "color: unknown color '%s' (available: %s)\n",
+                              reqColor.c_str(), colorNames().c_str());
+        }
+
         bool colorize = !activeSgr.empty() && colorAllowed && !out.empty();
         if (colorize) std::printf("\033[%sm", activeSgr.c_str());
         std::printf("%s", out.c_str());
