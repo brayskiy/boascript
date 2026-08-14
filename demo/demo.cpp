@@ -123,6 +123,27 @@ static const Demo DEMOS[] =
       "m[0][0] = 99;\n"
       "print m; println \"\";" },
 
+    { "Complex numbers",
+      "complex(), cabs/carg/conj, cadd/csub/cmul/cdiv",
+      "z = complex(3, 4);\n"
+      "println z;\n"
+      "println cabs(z);\n"
+      "println conj(z);\n"
+      "println cadd(complex(1, 2), complex(3, -1));\n"
+      "println cmul(complex(1, 2), complex(3, -1));\n"
+      "println cdiv(complex(1, 2), complex(3, -1));\n"
+      "i = complex(0, 1);\n"
+      "println cmul(i, i);" },
+
+    { "Complex matrices",
+      "complex matrix det, ctranspose, matmul, solve",
+      "M = [[complex(1, 1), complex(2, 0)], [complex(0, 1), complex(1, -1)]];\n"
+      "print M; println \"\";\n"
+      "println det(M);\n"
+      "print ctranspose(M); println \"\";\n"
+      "print matmul(ctranspose(M), M); println \"\";\n"
+      "print solve([[complex(1, 1)]], [complex(2, 2)]); println \"\";" },
+
     { "Math builtins",
       "sqrt, pow, hypot, trig, pi",
       "println sqrt(2);\n"
