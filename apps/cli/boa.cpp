@@ -14,6 +14,12 @@ backspace/delete) with no external dependency. It works on any POSIX
 terminal (Linux, macOS) and on the native Windows console (Windows 10+,
 which supports virtual-terminal sequences).
 
+Result output can be tinted with a named color, set at launch with
+--color NAME, changed live with the ":color NAME" REPL command, or set by the
+script itself via the color("NAME") builtin (read back through
+Boascript::outputColor()); color is written only to a terminal and honors the
+NO_COLOR convention.
+
 Type exit() or press Ctrl-D (Ctrl-Z on Windows) / EOF to leave.
 
 **********************************************************************/
@@ -38,6 +44,69 @@ Type exit() or press Ctrl-D (Ctrl-Z on Windows) / EOF to leave.
 #endif
 
 using namespace BoriSoft;
+
+
+// ----------------------------------------------------------------------------
+// Output color (ANSI SGR)
+//
+// Result output can be tinted with a named foreground color. The color is
+// only emitted to a real terminal (never into a pipe/redirect), and the
+// NO_COLOR convention (https://no-color.org) disables it entirely.
+// ----------------------------------------------------------------------------
+
+struct NamedColor { const char* name; const char* sgr; };
+
+static const NamedColor kColors[] = {
+    { "black",   "30" }, { "red",     "31" }, { "green",   "32" },
+    { "yellow",  "33" }, { "blue",    "34" }, { "magenta", "35" },
+    { "cyan",    "36" }, { "white",   "37" }, { "gray",    "90" },
+    { "grey",    "90" },
+    { "brightred",     "91" }, { "brightgreen",   "92" },
+    { "brightyellow",  "93" }, { "brightblue",    "94" },
+    { "brightmagenta", "95" }, { "brightcyan",    "96" },
+    { "brightwhite",   "97" },
+};
+
+// Map a color name (case-insensitive) to its ANSI SGR foreground code.
+// "off", "none", "default", and "" are recognized and yield "" (no color).
+// Unknown names set *known=false and return "".
+static std::string colorSgr(const std::string& nameIn, bool* known)
+{
+    std::string name;
+    for (size_t i = 0; i < nameIn.size(); ++i)
+        name += (char)std::tolower((unsigned char)nameIn[i]);
+
+    *known = true;
+    if (name.empty() || name == "off" || name == "none" || name == "default")
+        return "";
+    for (size_t i = 0; i < sizeof(kColors) / sizeof(kColors[0]); ++i)
+        if (name == kColors[i].name) return kColors[i].sgr;
+
+    *known = false;
+    return "";
+}
+
+// Comma-separated list of the color names, for help/error messages.
+static std::string colorNames()
+{
+    std::string s;
+    for (size_t i = 0; i < sizeof(kColors) / sizeof(kColors[0]); ++i)
+    {
+        if (i) s += ", ";
+        s += kColors[i].name;
+    }
+    s += ", off";
+    return s;
+}
+
+static bool stdoutIsTty()
+{
+#if defined(_WIN32)
+    return _isatty(_fileno(stdout)) != 0;
+#else
+    return isatty(STDOUT_FILENO) != 0;
+#endif
+}
 
 
 static std::string trim(const std::string& s)
@@ -126,9 +195,9 @@ static bool isStatement(const std::string& t)
     std::string w = firstWord(t);
     if (w == "print" || w == "println" || w == "if" || w == "while" ||
         w == "for" || w == "func" || w == "return" || w == "case" ||
-        w == "when" || w == "exit")
+        w == "when" || w == "exit" || w == "color")
     {
-        return true;
+        return true;                            // color("..") runs silently
     }
     return hasAssignment(t);
 }
@@ -432,11 +501,19 @@ private:
 LineReader* LineReader::s_self = 0;
 
 
-int main()
+int main(int argc, char** argv)
 {
 #if defined(_WIN32)
     const char* os     = "windows";
     const char* eofkey = "Ctrl-Z";
+    // Enable virtual-terminal output so ANSI color codes render when result
+    // output is printed (outside the line editor's raw mode). Best effort.
+    {
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        DWORD  mode;
+        if (GetConsoleMode(hOut, &mode))
+            SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+    }
 #elif defined(__APPLE__)
     const char* os     = "darwin";
     const char* eofkey = "Ctrl-D";
@@ -448,12 +525,62 @@ int main()
     const char* eofkey = "Ctrl-D";
 #endif
 
+    // Result-output color. Empty activeSgr == off. Color is only ever written
+    // to a terminal, and never when NO_COLOR is set.
+    std::string activeSgr;
+    const bool  colorAllowed = stdoutIsTty() && (std::getenv("NO_COLOR") == 0);
+
+    for (int i = 1; i < argc; ++i)
+    {
+        std::string a = argv[i];
+        std::string val;
+        bool        haveColorArg = false;
+        if (a == "--color" || a == "-c")
+        {
+            if (i + 1 < argc) { val = argv[++i]; haveColorArg = true; }
+            else { std::fprintf(stderr, "boa: %s requires a color name\n", a.c_str()); return 2; }
+        }
+        else if (a.rfind("--color=", 0) == 0) { val = a.substr(8); haveColorArg = true; }
+        else if (a == "--help" || a == "-h")
+        {
+            std::printf("Usage: boa [--color NAME]\n\n"
+                        "  --color, -c NAME  tint result output (%s)\n"
+                        "  --help,  -h       show this help\n\n"
+                        "Inside the REPL, ':color NAME' changes it live.\n",
+                        colorNames().c_str());
+            return 0;
+        }
+        else
+        {
+            std::fprintf(stderr, "boa: unknown option '%s' (try --help)\n", a.c_str());
+            return 2;
+        }
+
+        if (haveColorArg)
+        {
+            bool known;
+            std::string sgr = colorSgr(val, &known);
+            if (!known)
+            {
+                std::fprintf(stderr, "boa: unknown color '%s' (available: %s)\n",
+                             val.c_str(), colorNames().c_str());
+                return 2;
+            }
+            activeSgr = sgr;
+        }
+    }
+
     std::printf("BoaScript %s on %s\n", BOASCRIPT_VERSION, os);
     std::printf("%s\n", BOASCRIPT_DESCRIPTION);
     std::printf("Type \"exit()\" or %s (i.e. EOF) to exit.\n", eofkey);
 
     Boascript bs;
     bs.beginSession();
+
+    // The script can change the color itself via the color() builtin. We track
+    // the last color it requested and only act when that request changes, so a
+    // startup --color or a :color command is not overridden on every line.
+    std::string prevScriptColor = bs.outputColor();
 
     LineReader reader;
     std::string buffer;
@@ -482,6 +609,41 @@ int main()
             {
                 break;
             }
+            // ':color [NAME]' changes the result-output color live. Handled
+            // here so it never reaches the interpreter.
+            if (t0 == ":color" || t0.rfind(":color ", 0) == 0)
+            {
+                std::string arg = trim(t0.substr(6));
+                if (arg.empty())
+                {
+                    std::printf("Output color: %s (available: %s)\n",
+                                activeSgr.empty() ? "off" : "on",
+                                colorNames().c_str());
+                }
+                else
+                {
+                    bool known;
+                    std::string sgr = colorSgr(arg, &known);
+                    if (!known)
+                    {
+                        std::printf("Unknown color '%s' (available: %s)\n",
+                                    arg.c_str(), colorNames().c_str());
+                    }
+                    else
+                    {
+                        activeSgr = sgr;
+                        if (activeSgr.empty())
+                            std::printf("Output color: off\n");
+                        else if (!colorAllowed)
+                            std::printf("Output color set (no color emitted: "
+                                        "not a terminal or NO_COLOR is set)\n");
+                        else
+                            std::printf("Output color: \033[%smsample\033[0m\n",
+                                        activeSgr.c_str());
+                    }
+                }
+                continue;
+            }
         }
 
         buffer += line;
@@ -505,7 +667,25 @@ int main()
         }
 
         std::string out = bs.runLine(prog);
+
+        // Apply a color the script requested via color(), if it changed. This
+        // takes effect for the current line's output and onward. An unknown
+        // name is reported (to stderr, to keep stdout clean) and ignored.
+        std::string reqColor = bs.outputColor();
+        if (reqColor != prevScriptColor)
+        {
+            prevScriptColor = reqColor;
+            bool known;
+            std::string sgr = colorSgr(reqColor, &known);
+            if (known) activeSgr = sgr;
+            else std::fprintf(stderr, "color: unknown color '%s' (available: %s)\n",
+                              reqColor.c_str(), colorNames().c_str());
+        }
+
+        bool colorize = !activeSgr.empty() && colorAllowed && !out.empty();
+        if (colorize) std::printf("\033[%sm", activeSgr.c_str());
         std::printf("%s", out.c_str());
+        if (colorize) std::printf("\033[0m");
         if (!out.empty() && out[out.size() - 1] != '\n') std::printf("\n");
         std::fflush(stdout);
     }
