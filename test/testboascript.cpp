@@ -523,6 +523,46 @@ TestCase testCase[] =
         assertEqualString
     },
 
+    // Complex numbers.
+
+    {
+        4048,
+        "w = cmul(complex(1, 2), complex(3, -1)); println creal(w) + cimag(w);",
+        "10",   // (1+2i)(3-i) = 5+5i -> 5 + 5
+        assertEqualDouble
+    },
+
+    {
+        4050,
+        "print cdiv(complex(1, 2), complex(3, -1));",
+        "0.1000000+0.7000000i",
+        assertEqualString
+    },
+
+    // Complex matrices.
+
+    {
+        4052,
+        "M = [[complex(1,1), complex(2,0)], [complex(0,1), complex(1,-1)]]; print det(M);",
+        "2.0000000-2.0000000i",   // (1+i)(1-i) - 2i
+        assertEqualString
+    },
+
+    {
+        4054,
+        "print matmul([[complex(0,1), complex(0,0)], [complex(0,0), complex(0,1)]],"
+        " [[complex(0,1), complex(0,0)], [complex(0,0), complex(0,1)]]);",
+        "[[-1, 0], [0, -1]]",     // (i*I)^2 = -I
+        assertEqualString
+    },
+
+    {
+        4056,
+        "v = [complex(2, 3), 7]; println cimag(v[0]) + creal(v[1]);",
+        "10",                     // 3 + 7  (index preserves complex)
+        assertEqualDouble
+    },
+
 };
 
 

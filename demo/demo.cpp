@@ -123,6 +123,27 @@ static const Demo DEMOS[] =
       "m[0][0] = 99;\n"
       "print m; println \"\";" },
 
+    { "Complex numbers",
+      "complex(), cabs/carg/conj, cadd/csub/cmul/cdiv",
+      "z = complex(3, 4);\n"
+      "println z;\n"
+      "println cabs(z);\n"
+      "println conj(z);\n"
+      "println cadd(complex(1, 2), complex(3, -1));\n"
+      "println cmul(complex(1, 2), complex(3, -1));\n"
+      "println cdiv(complex(1, 2), complex(3, -1));\n"
+      "i = complex(0, 1);\n"
+      "println cmul(i, i);" },
+
+    { "Complex matrices",
+      "complex matrix det, ctranspose, matmul, solve",
+      "M = [[complex(1, 1), complex(2, 0)], [complex(0, 1), complex(1, -1)]];\n"
+      "print M; println \"\";\n"
+      "println det(M);\n"
+      "print ctranspose(M); println \"\";\n"
+      "print matmul(ctranspose(M), M); println \"\";\n"
+      "print solve([[complex(1, 1)]], [complex(2, 2)]); println \"\";" },
+
     { "Math builtins",
       "sqrt, pow, hypot, trig, pi",
       "println sqrt(2);\n"
@@ -137,6 +158,13 @@ static const Demo DEMOS[] =
       "println intgauss3(f, 0, 1);\n"
       "func g(x) { return sin(x); }\n"
       "println intgauss3(g, 0, pi());" },
+
+    { "Colored output",
+      "the color() builtin tints the output that follows",
+      "color(\"cyan\");\n"
+      "println \"This output is printed in cyan by color().\";\n"
+      "println \"color(NAME) changes the color of everything after it.\";\n"
+      "println \"color(off) restores the default.\";" },
 
     { "Version & description",
       "the version() and about() builtins",
@@ -153,6 +181,22 @@ static const char* CYAN  = "\033[36m";
 static const char* GREEN = "\033[32m";
 static const char* RESET = "\033[0m";
 
+// Map a color name (as passed to the color() builtin) to its ANSI SGR escape,
+// or "" for an unknown/default name. Lets a demo script tint its own output.
+static std::string colorEscape(const std::string& name)
+{
+    static const struct { const char* n; const char* sgr; } tbl[] = {
+        { "black", "30" }, { "red", "31" }, { "green", "32" }, { "yellow", "33" },
+        { "blue", "34" }, { "magenta", "35" }, { "cyan", "36" }, { "white", "37" },
+        { "gray", "90" }, { "grey", "90" }, { "brightred", "91" },
+        { "brightgreen", "92" }, { "brightyellow", "93" }, { "brightblue", "94" },
+        { "brightmagenta", "95" }, { "brightcyan", "96" }, { "brightwhite", "97" },
+    };
+    for (size_t i = 0; i < sizeof(tbl) / sizeof(tbl[0]); ++i)
+        if (name == tbl[i].n) return std::string("\033[") + tbl[i].sgr + "m";
+    return "";
+}
+
 
 // ----------------------------------------------------------------------------
 // Running a demo
@@ -168,7 +212,12 @@ static void runDemo(const Demo& d)
     Boascript bs;
     std::string out = bs.run(d.script);
 
-    std::printf("%s--- output ---%s\n%s%s%s", BOLD, RESET, GREEN, out.c_str(), RESET);
+    // If the script chose a color with color(), tint its output accordingly;
+    // otherwise use the default green.
+    std::string tint = colorEscape(bs.outputColor());
+    if (tint.empty()) tint = GREEN;
+
+    std::printf("%s--- output ---%s\n%s%s%s", BOLD, RESET, tint.c_str(), out.c_str(), RESET);
     if (out.empty() || out[out.size() - 1] != '\n')
     {
         std::printf("\n");
