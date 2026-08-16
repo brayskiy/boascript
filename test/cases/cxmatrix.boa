@@ -1,0 +1,44 @@
+// Complex numbers inside vectors and matrices. Array leaves carry an
+// imaginary part, so complex values round-trip through build / print / index,
+// the structural builtins preserve them, and the arithmetic builtins (det,
+// matmul, transpose/ctranspose, inverse, solve) operate over complex.
+
+// A vector may mix complex and real elements; a real element has no "i".
+v = [complex(1, 2), complex(3, -1), 5];
+print v; println "";                       // [1+2i, 3-1i, 5]
+println cimag(v[0]);                       // 2   (index preserves complex)
+println creal(v[1]) + cimag(v[1]);         // 2   (3 + -1)
+
+// A 2x2 complex matrix.
+M = [[complex(1, 1), complex(2, 0)], [complex(0, 1), complex(1, -1)]];
+print M; println "";                       // [[1+1i, 2], [0+1i, 1-1i]]
+
+// Structural builtins preserve complex leaves.
+print rotate(M); println "";               // [[0+1i, 1+1i], [1-1i, 2]]
+print transpose(M); println "";            // [[1+1i, 0+1i], [2, 1-1i]]
+print ctranspose(M); println "";           // conjugate transpose
+print submatrix(M, 0, 0); println "";      // [[1-1i]]
+
+// Determinant of a complex matrix: (1+i)(1-i) - 2*i = 2 - 2i.
+println det(M);                            // 2-2i
+
+// Matrix multiply. M * I = M; a Hermitian product M* M is also complex.
+I = [[1, 0], [0, 1]];
+print matmul(M, I); println "";            // M unchanged
+print matmul(ctranspose(M), M); println ""; // M^H M (Hermitian, real diagonal)
+
+// Complex inverse, verified by multiplying back to the identity.
+A = [[complex(1, 1), complex(0, 0)], [complex(0, 0), complex(2, 0)]];
+print matmul(A, inverse(A)); println "";   // [[1, 0], [0, 1]]
+
+// Complex linear solve: (1+i) x = (2+2i)  ->  x = 2.
+print solve([[complex(1, 1)]], [complex(2, 2)]); println "";   // [2]
+
+// A 2x2 complex system:  [[1, i], [i, 1]] x = [1, 0].
+print solve([[complex(1,0), complex(0,1)], [complex(0,1), complex(1,0)]],
+            [complex(1,0), complex(0,0)]); println "";
+
+// Real matrices are unaffected by the shared code paths.
+println det([[1, 2], [3, 4]]);             // -2
+print matmul([[1, 2], [3, 4]], [[5, 6], [7, 8]]); println "";  // [[19, 22], [43, 50]]
+print transpose([[1, 2, 3], [4, 5, 6]]); println "";           // [[1, 4], [2, 5], [3, 6]]

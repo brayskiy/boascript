@@ -20,7 +20,7 @@ cd demo && make run
 
 ## Using it
 
-* **Type a number** (1–13) and press Enter to run that demo.
+* **Type a number** (1–15) and press Enter to run that demo.
 * **Click** a menu item with the mouse (in a mouse-capable terminal).
 * **`r`** opens a small REPL — type a line of BoaScript and see its output;
   an empty line returns to the menu.
@@ -37,6 +37,6 @@ printf '1\n8\nq\n' | ./demo/boademo
 
 Arithmetic & precedence, variables & assignment, number bases, strings,
 string manipulation, control flow, functions & recursion, arrays,
-multi-dimensional arrays, math builtins, numerical integration
-(`intgauss3`), colored output (the `color()` builtin), and
-`version()`/`about()`.
+multi-dimensional arrays, complex numbers, complex matrices, math builtins,
+numerical integration (`intgauss3`), colored output (the `color()` builtin),
+and `version()`/`about()`.

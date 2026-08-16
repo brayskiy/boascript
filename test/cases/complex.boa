@@ -1,0 +1,32 @@
+// Complex numbers, adapted from the ooyacc complex example. BoaScript has no
+// [re,im] literal (that is array-literal syntax); complex values are built and
+// combined through builtins, and a real argument promotes to (n, 0).
+
+z = complex(3, 4);
+println z;                          // 3+4i
+println creal(z);                   // 3
+println cimag(z);                   // 4
+println cabs(z);                    // 5  (magnitude)
+println conj(z);                    // 3-4i
+
+// Arithmetic.
+a = complex(1, 2);
+b = complex(3, -1);
+println cadd(a, b);                 // 4+1i
+println csub(a, b);                 // -2+3i
+println cmul(a, b);                 // 5+5i   (1+2i)(3-i)
+println cdiv(a, b);                 // 0.1+0.7i
+
+// The imaginary unit and its powers.
+i = complex(0, 1);
+println cmul(i, i);                 // -1+0i   i^2
+println cmul(cmul(i, i), i);        // -0-1i   i^3
+
+// Real arguments promote to (n, 0).
+println cadd(z, 1);                 // 4+4i
+println cmul(complex(2, 0), b);     // 6-2i
+
+// A complex value is an ordinary scalar: assignable and string-convertible.
+w = cmul(a, b);
+println creal(w) + cimag(w);        // 10
+println "w = " + w;                 // w = 5+5i
