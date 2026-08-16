@@ -548,6 +548,33 @@ static void testVersion()
 }
 
 
+static void testColor()
+{
+    // color(name) records a requested output color and returns the name;
+    // color() clears it. The builtin emits NOTHING into the output stream
+    // (the ANSI tinting is the CLI front-end's job, via outputColor()).
+    eqStr("color_ret",     "print color(\"green\");", "green");
+    eqStr("color_off",     "print color();", "");
+    eqStr("color_noemit",  "color(\"green\"); print \"x\";", "x");
+    eqNum("color_then",    "color(\"red\"); println 2 + 3;", 5);
+    // Not a reserved word: usable as an ordinary variable.
+    eqNum("color_as_var",  "color = 5; println color + 1;", 6);
+    // outputColor() reflects the last request across a session.
+    {
+        Boascript bs;
+        bs.beginSession();
+        bs.runLine("color(\"cyan\");");
+        bool ok1 = (bs.outputColor() == "cyan");
+        bs.runLine("println 1;");                 // unrelated line keeps it
+        bool ok2 = (bs.outputColor() == "cyan");
+        bs.runLine("color();");                    // no-arg clears
+        bool ok3 = bs.outputColor().empty();
+        bs.endSession();
+        check("color_session", "color() session state", ok1 && ok2 && ok3);
+    }
+}
+
+
 static void testLexer()
 {
     eqNum("sci_pos",   "println 1.5e3;", 1500);
@@ -639,6 +666,7 @@ int main()
     testComplex();
     testComplexMatrix();
     testVersion();
+    testColor();
     testLexer();
     testApi();
 
